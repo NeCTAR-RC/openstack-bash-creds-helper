@@ -41,7 +41,7 @@ Create the directory `~/.openstack-creds`
     chmod 700 ~/.openstack-creds
 ```
     
-Then add any OpenStack credentials files to ~/.openstack-creds
+Then add any OpenStack credentials files to `~/.openstack-creds`
 
 The format of the credential files should look something like this:
 
