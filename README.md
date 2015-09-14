@@ -14,7 +14,7 @@ Installation
 ---------------
 First, put the `openstack_creds` script to somewhere in your path.
 
-Then add the following functions to your .bashrc:
+Then add the following functions to your `.bashrc`:
 
 ``` sh
     function creds() {
@@ -60,7 +60,7 @@ And optionally, you could add this for adding the currently loaded credentials t
         [ -z $OS_CRED_FILE ] || echo " ${OS_CRED_FILE}"
     }
 ```
-Then add $(os_creds) to your PS1 var. For example (coloured):
+Then add `$(os_creds)` to your PS1 var. For example (coloured):
 
 ```
     PS1='\[\033[01;32m\]\u@\h\[\033[01;34m\] \w\[\033[01;33m\]$(os_creds)\[\033[00m\] \$ '
