@@ -1,6 +1,6 @@
-penStack bash creds helper
+OpenStack bash creds helper
 ===========================
-This is a script to make managing OpenStack credentials easier, to be used in combination with the .bashrc functions below.
+This is a script to make managing OpenStack credentials easier, to be used in combination with the `.bashrc` functions below.
 
 Use
 ---
