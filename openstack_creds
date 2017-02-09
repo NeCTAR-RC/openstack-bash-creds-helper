@@ -77,7 +77,7 @@ choose() {
         echo "$QUEST: "
         OPT=1
         for X in $*; do
-            echo "$OPT) $X"
+            printf "%3.d) $X\n" $OPT
             eval CHOICE_N$OPT=$X
             OPT=`expr $OPT + 1`
         done
@@ -115,6 +115,8 @@ unset OS_AUTH_URL
 unset OS_IDENTITY_API_VERSION
 unset OS_NO_CACHE
 unset OS_PASSWORD
+unset OS_PROJECT_ID
+unset OS_PROJECT_NAME
 unset OS_REGION_NAME
 unset OS_TENANT_ID
 unset OS_TENANT_NAME
