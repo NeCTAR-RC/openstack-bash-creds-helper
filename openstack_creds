@@ -129,5 +129,5 @@ echo "export OS_CRED_FILE=$CRED_FILE" >> $CREDS
 cat $CREDS_DIR/$CRED_FILE >> $CREDS
 
 chmod 0600 $CREDS
-source $CREDS
+. $CREDS
 exit 0
