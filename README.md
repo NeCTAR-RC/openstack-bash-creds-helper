@@ -25,12 +25,14 @@ Then add the following functions to your `.bashrc`:
             chcreds
         fi
     }
-    function chcreds() {
-        nectar_creds && creds
-    }
     function rmcreds() {
-        source $HOME/.openstack-creds/.rmcreds
-        rm -f $HOME/.openstack-creds/.creds
+        for v in $(env | grep -E '^OS_' | sed 's/=.*//'); do unset $v; done
+    }
+    function prcreds {
+        env | grep -E '^OS_'
+    }
+    function chcreds() {
+        rmcreds && openstack_creds && creds
     }
 ```
 
@@ -40,15 +42,15 @@ Create the directory `~/.openstack-creds`
     mkdir  ~/.openstack-creds
     chmod 700 ~/.openstack-creds
 ```
-    
+
 Then add any OpenStack credentials files to `~/.openstack-creds`
 
 The format of the credential files should look something like this:
 
 ``` sh
-    export OS_AUTH_URL=http://keystone.domain.name:5000/v2.0/
+    export OS_AUTH_URL=http://keystone.domain.name:5000/v3/
     export OS_NO_CACHE=true
-    export OS_TENANT_NAME=tenant
+    export OS_PROJECT_NAME=tenant
     export OS_USERNAME=username
     export OS_PASSWORD=password
 ```

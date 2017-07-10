@@ -9,29 +9,31 @@
 #
 # First, add the following to your .bashrc:
 #
-# function creds() {
-#     if [ -f $HOME/.openstack-creds/.creds ]; then
-#         source $HOME/.openstack-creds/.creds
-#         echo "$OS_CRED_FILE"
-#     else
-#         chcreds
-#     fi
-# }
-# function chcreds() {
-#     nectar_creds && creds
-# }
-# function rmcreds() {
-#     source $HOME/.openstack-creds/.rmcreds
-#     rm -f $HOME/.openstack-creds/.creds
-# }
+#  function creds() {
+#      if [ -f $HOME/.openstack-creds/.creds ]; then
+#          . $HOME/.openstack-creds/.creds
+#          echo "$OS_CRED_FILE"
+#      else
+#          chcreds
+#      fi
+#  }
+#  function rmcreds() {
+#      for v in $(env | grep -E '^OS_' | sed 's/=.*//'); do unset $v; done
+#  }
+#  function prcreds {
+#      env | grep -E '^OS_'
+#  }
+#  function chcreds() {
+#      rmcreds && openstack_creds && creds
+#  }
 #
 # Then add any OpenStack credentials files to ~/.openstack-creds
 #
 # The format of the credential files should look something like this:
 #
-#   export OS_AUTH_URL=http://keystone.domain.name:5000/v2.0/
+#   export OS_AUTH_URL=http://keystone.domain.name:5000/v3/
 #   export OS_NO_CACHE=true
-#   export OS_TENANT_NAME=tenant
+#   export OS_PROJECT_NAME=tenant
 #   export OS_USERNAME=username
 #   export OS_PASSWORD=password
 #
@@ -41,7 +43,7 @@
 # function os_creds {
 #     [ -z $OS_CRED_FILE ] || echo " ${OS_CRED_FILE}"
 # }
-# 
+#
 # Add add $(os_creds) to your PS1 var. For example (coloured):
 #
 # PS1='\[\033[01;32m\]\u@\h\[\033[01;34m\] \w\[\033[01;33m\]$(os_creds)\[\033[00m\] \$ '
@@ -55,7 +57,6 @@ CREDS_DIR=$HOME/.openstack-creds
 # passwords in clear text, but is stored with 0600 perms so should be for your
 # eyes only.
 CREDS=$CREDS_DIR/.creds
-RMCREDS=$CREDS_DIR/.rmcreds
 
 choose() {
     QUEST=$1
@@ -108,24 +109,7 @@ fi
 
 choose 'Choose credential file' CRED_FILE $CRED_FILES
 
-for F in $CREDS $RMCREDS; do
-cat > $F <<!EOF
-unset OS_CRED_FILE
-unset OS_AUTH_URL
-unset OS_IDENTITY_API_VERSION
-unset OS_NO_CACHE
-unset OS_PASSWORD
-unset OS_PROJECT_ID
-unset OS_PROJECT_NAME
-unset OS_REGION_NAME
-unset OS_TENANT_ID
-unset OS_TENANT_NAME
-unset OS_USERNAME
-unset OS_VOLUME_API_VERSION
-!EOF
-done
-
-echo "export OS_CRED_FILE=$CRED_FILE" >> $CREDS
+echo "export OS_CRED_FILE=$CRED_FILE" > $CREDS
 cat $CREDS_DIR/$CRED_FILE >> $CREDS
 
 chmod 0600 $CREDS
