@@ -24,7 +24,7 @@
 #      env | grep -E '^OS_'
 #  }
 #  function chcreds() {
-#      rmcreds && openstack_creds && creds
+#      rmcreds && openstack_creds "$1" && creds
 #  }
 #
 # Then add any OpenStack credentials files to ~/.openstack-creds
@@ -107,7 +107,15 @@ if [ -z "$CRED_FILES" ]; then
     exit 1
 fi
 
-choose 'Choose credential file' CRED_FILE $CRED_FILES
+if [ ! -z "$1" ]; then
+    CRED_FILE=$1
+    if [ ! -f $CREDS_DIR/$CRED_FILE ]; then
+        echo "Credential file $CRED_FILE not found"
+        exit 1
+    fi
+else
+    choose 'Choose credential file' CRED_FILE $CRED_FILES
+fi
 
 echo "export OS_CRED_FILE=$CRED_FILE" > $CREDS
 cat $CREDS_DIR/$CRED_FILE >> $CREDS

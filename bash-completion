@@ -1,0 +1,8 @@
+_chcreds ()
+{
+         local cur
+         cur=${COMP_WORDS[COMP_CWORD]}
+         [ -d ~/.openstack-creds ] && chcreds_files=$(ls ~/.openstack-creds)
+         COMPREPLY=($( compgen -W "$chcreds_files" -- $cur ))
+}
+complete -F _chcreds chcreds

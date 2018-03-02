@@ -12,7 +12,12 @@ This script provides the following commands:
 
 Installation
 ---------------
-First, put the `openstack_creds` script to somewhere in your path.
+First, put the `openstack_creds` script to somewhere in your path (e.g. ~/.local/bin)
+
+``` sh
+    mkdir -p ~/.local/bin
+    cp openstack_creds ~/.local/bin/
+```
 
 Then add the following functions to your `.bashrc`:
 
@@ -67,3 +72,16 @@ Then add `$(os_creds)` to your PS1 var. For example (coloured):
 ```
     PS1='\[\033[01;32m\]\u@\h\[\033[01;34m\] \w\[\033[01;33m\]$(os_creds)\[\033[00m\] \$ '
 ```
+
+Bash completion
+---------------
+A bash completion script is also included for your convenience.
+
+To install it for your user, the following should work:
+
+``` sh
+    mkdir -p ~/.local/share/bash-completion/completions
+    cp bash-completion ~/.local/share/bash-completion/completions/chcreds
+```
+
+You can then use tab completion to complete the filename of the credentials file.
