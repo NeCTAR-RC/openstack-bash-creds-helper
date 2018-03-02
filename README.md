@@ -9,6 +9,7 @@ This script provides the following commands:
   * `chchreds` to change which credentials to load
   * `creds`    to load the existing credentials in a new environment
   * `rmcreds`  to clear the current credentials from your current environment
+  * `prcreds`  to print the current credentials
 
 Installation
 ---------------
@@ -22,23 +23,24 @@ First, put the `openstack_creds` script to somewhere in your path (e.g. ~/.local
 Then add the following functions to your `.bashrc`:
 
 ``` sh
-    function creds() {
-        if [ -f $HOME/.openstack-creds/.creds ]; then
-            source $HOME/.openstack-creds/.creds
-            echo "$OS_CRED_FILE"
-        else
-            chcreds
-        fi
-    }
-    function rmcreds() {
-        for v in $(env | grep -E '^OS_' | sed 's/=.*//'); do unset $v; done
-    }
-    function prcreds {
-        env | grep -E '^OS_'
-    }
-    function chcreds() {
-        rmcreds && openstack_creds && creds
-    }
+	# NeCTAR credentials
+	function creds() {
+		if [ -f $HOME/.openstack-creds/.creds ]; then
+			. $HOME/.openstack-creds/.creds
+			echo "$OS_CRED_FILE"
+		else
+			chcreds
+		fi
+	}
+	function chcreds() {
+		rmcreds && openstack_creds "$1" && creds
+	}
+	function rmcreds() {
+		for v in $(env | grep -E '^OS_' | sed 's/=.*//'); do unset $v; done
+	}
+	function prcreds {
+		env | grep -E '^OS_'
+	}
 ```
 
 Create the directory `~/.openstack-creds`
@@ -83,5 +85,8 @@ To install it for your user, the following should work:
     mkdir -p ~/.local/share/bash-completion/completions
     cp bash-completion ~/.local/share/bash-completion/completions/chcreds
 ```
+
+Depending on your version of bash-completion, you may have to install this file into
+`/etc/bash_completion.d` instead (e.g. Ubuntu Xenial).
 
 You can then use tab completion to complete the filename of the credentials file.
