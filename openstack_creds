@@ -1,33 +1,19 @@
-#!/bin/sh
-# Script to make managing OpenStack credentials easier.
-# To be used in combination with the .bashrc functions below.
+#!/bin/bash
+# Script to make managing OpenStack credentials with password store easy.
+# To be used in combination with the functions in bash-functions file
 #
 # This script provides the following commands:
 #   * chchreds to change which credentials to load
 #   * creds    to load the existing credentials in a new environment
 #   * rmcreds  to clear the current credentials from your current environment
 #
-# First, add the following to your .bashrc:
+# First you'll need to source the bash-functions file. This is best done from
+# within your ~/.bashrc file:
 #
-#  function creds() {
-#      if [ -f $HOME/.openstack-creds/.creds ]; then
-#          . $HOME/.openstack-creds/.creds
-#          echo "$OS_CRED_FILE"
-#      else
-#          chcreds
-#      fi
-#  }
-#  function rmcreds() {
-#      for v in $(env | grep -E '^OS_' | sed 's/=.*//'); do unset $v; done
-#  }
-#  function prcreds {
-#      env | grep -E '^OS_'
-#  }
-#  function chcreds() {
-#      rmcreds && openstack_creds "$1" && creds
-#  }
+#  . ~/projects/openstack-bash-creds-helper/bash-functions
 #
-# Then add any OpenStack credentials files to ~/.openstack-creds
+# Then add any OpenStack credentials files to pass, with a .openrc extension
+# for each of your openrc environment files.
 #
 # The format of the credential files should look something like this:
 #
@@ -37,89 +23,98 @@
 #   export OS_USERNAME=username
 #   export OS_PASSWORD=password
 #
-# And optionally, you could add this for adding the currently
-# loaded credentials to your bash prompt:
-#
-# function os_creds {
-#     [ -z $OS_CRED_FILE ] || echo " ${OS_CRED_FILE}"
-# }
-#
-# Add add $(os_creds) to your PS1 var. For example (coloured):
+# And optionally, you could add the os_creds function to your bash prompt to
+# give you the currently loaded credentials in your PS1
 #
 # PS1='\[\033[01;32m\]\u@\h\[\033[01;34m\] \w\[\033[01;33m\]$(os_creds)\[\033[00m\] \$ '
 #
 # Andy Botting <andy@andybotting.com>
 
-# Where we stash our files.
-CREDS_DIR=$HOME/.openstack-creds
-
-# creds file - used to stash your current settings.  This does contains
-# passwords in clear text, but is stored with 0600 perms so should be for your
-# eyes only.
-CREDS=$CREDS_DIR/.creds
+CHCREDS="${CHCRED_FILE:-$HOME/.chcred}"
+PSDIR="${PASSWORD_STORE_DIR:-$HOME/.password-store/}"
+PSDIR="${PSDIR%/}/"
+MATCH=".openrc"
+SUFFIX=".gpg"
 
 choose() {
     QUEST=$1
     VAR=$2
     eval DEF=\$$VAR
     shift 2
-    DEF_MATCHED=0
-    for X in $*; do
-        if [ "$DEF" = "$X" ]; then
-            DEF_MATCHED=1
-            break
-        fi
-    done
-    if [ $DEF_MATCHED -eq 0 ]; then
-        DEF=$1
-    fi
     CHOICE=""
-    while [ ! "$CHOICE" ]; do
-        echo "$QUEST: "
-        OPT=1
-        for X in $*; do
-            printf "%3.d) $X\n" $OPT
-            eval CHOICE_N$OPT=$X
-            OPT=`expr $OPT + 1`
-        done
-        echo -n "[$DEF]: "
-        read ANS
-        if [ "x$ANS" = "x" ]; then
-            CHOICE=$DEF
-        else
-            case $ANS in
-                [[:digit:]]*)
-                    if [ $ANS -gt 0 -a $ANS -le $# ]; then
-                        eval CHOICE=\$CHOICE_N$ANS
-                    fi;;
-            esac
-        fi
-    done
+    # Match any given options
+    case $DEF in
+        [[:digit:]]*)
+            opt=1
+            for x in $*; do
+                if [ "$DEF" = "$opt" ]; then
+                    CHOICE=$x
+                    break
+                fi
+                opt=$((opt+1))
+            done
+        ;;
+        [[:alpha:]]*)
+            for x in $*; do
+                if [ "$DEF$MATCH" = "$x" ]; then
+                    CHOICE=$x
+                    break
+                fi
+            done
+        ;;
+    esac
+
+    # Show list of choices
+    if [ -z $CHOICE ]; then
+		[ -f $CHCREDS ] && DEF=$(cat $CHCREDS)
+
+		DEF_MATCHED=0
+		for X in $*; do
+			if [ "$DEF" = "$X" ]; then
+				DEF_MATCHED=1
+				break
+			fi
+		done
+		if [ $DEF_MATCHED -eq 0 ]; then
+			DEF=$1
+		fi
+		while [ ! "$CHOICE" ]; do
+			echo "$QUEST: "
+			opt=1
+			for x in $*; do
+				printf "%3.d) ${x%$MATCH}\n" $opt
+				eval CHOICE_N$opt=$x
+                opt=$((opt+1))
+			done
+			echo -n "[${DEF%$MATCH}]: "
+			read ANS
+			if [ "x$ANS" = "x" ]; then
+				CHOICE=$DEF
+			else
+				case $ANS in
+					[[:digit:]]*)
+						if [ $ANS -gt 0 -a $ANS -le $# ]; then
+							eval CHOICE=\$CHOICE_N$ANS
+						fi
+                    ;;
+				esac
+			fi
+		done
+    fi
+
     eval $VAR=$CHOICE
 }
 
-test -d $CREDS_DIR || mkdir -p $CREDS_DIR && chmod 0700 $CREDS_DIR
+# Discover credential files in pass
+for c in $(find $PSDIR -type f -name "*$MATCH$SUFFIX" | sort); do
+    c="${c#$PSDIR}"
+    c="${c%$SUFFIX}"
+    creds="$creds $c"
+done
 
-CRED_FILES=$(ls $CREDS_DIR)
+[ ! -z "$1" ] && cred=$1
 
-if [ -z "$CRED_FILES" ]; then
-    echo "No credential files stored in $CREDS_DIR"
-    exit 1
-fi
+choose 'Choose credential file' cred $creds
 
-if [ ! -z "$1" ]; then
-    CRED_FILE=$1
-    if [ ! -f $CREDS_DIR/$CRED_FILE ]; then
-        echo "Credential file $CRED_FILE not found"
-        exit 1
-    fi
-else
-    choose 'Choose credential file' CRED_FILE $CRED_FILES
-fi
-
-echo "export OS_CRED_FILE=$CRED_FILE" > $CREDS
-cat $CREDS_DIR/$CRED_FILE >> $CREDS
-
-chmod 0600 $CREDS
-. $CREDS
+echo $cred > $CHCREDS
 exit 0

@@ -1,6 +1,7 @@
 OpenStack bash creds helper
 ===========================
-This is a script to make managing OpenStack credentials easier, to be used in combination with the `.bashrc` functions below.
+This is a script to make managing OpenStack credentials easier, to be used in
+combination with included bash functions below (and a bash completion file).
 
 Use
 ---
@@ -20,37 +21,19 @@ First, put the `openstack_creds` script to somewhere in your path (e.g. ~/.local
     cp openstack_creds ~/.local/bin/
 ```
 
-Then add the following functions to your `.bashrc`:
+Then source bash functions in your `.bashrc`:
 
 ``` sh
-	# NeCTAR credentials
-	function creds() {
-		if [ -f $HOME/.openstack-creds/.creds ]; then
-			. $HOME/.openstack-creds/.creds
-			echo "$OS_CRED_FILE"
-		else
-			chcreds
-		fi
-	}
-	function chcreds() {
-		rmcreds && openstack_creds "$1" && creds
-	}
-	function rmcreds() {
-		for v in $(env | grep -E '^OS_' | sed 's/=.*//'); do unset $v; done
-	}
-	function prcreds {
-		env | grep -E '^OS_'
-	}
+	# openstack credentials
+    . ~/source/openstack-bash-creds-helper/bash-functions
 ```
 
-Create the directory `~/.openstack-creds`
+Add your OpenStack openrc credentials files into pass, ensuring they have a
+.openrc extension.
 
 ``` sh
-    mkdir  ~/.openstack-creds
-    chmod 700 ~/.openstack-creds
+    pass insert -m my-password.openrc
 ```
-
-Then add any OpenStack credentials files to `~/.openstack-creds`
 
 The format of the credential files should look something like this:
 
@@ -62,14 +45,8 @@ The format of the credential files should look something like this:
     export OS_PASSWORD=password
 ```
 
-And optionally, you could add this for adding the currently loaded credentials to your bash prompt:
-
-``` sh
-    function os_creds {
-        [ -z $OS_CRED_FILE ] || echo " ${OS_CRED_FILE}"
-    }
-```
-Then add `$(os_creds)` to your PS1 var. For example (coloured):
+And optionally, you could add `$(os_creds)` to your PS1 var for printing your
+currently loaded credentials in your prompt. For example (coloured):
 
 ```
     PS1='\[\033[01;32m\]\u@\h\[\033[01;34m\] \w\[\033[01;33m\]$(os_creds)\[\033[00m\] \$ '

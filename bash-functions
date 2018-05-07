@@ -1,0 +1,37 @@
+# Bash functions for chcreds
+#
+# This file should be sourced from your ~/.bashrc file like:
+#   . ~/projects/openstack-bash-creds-helper/bash-functions
+#
+# Andy Botting <andy@andybotting.com>
+
+CHCRED_FILE="${CHCRED_FILE:-$HOME/.chcred}"
+
+function creds() {
+    if [ -f $CHCRED_FILE ]; then
+        cred=$(cat $CHCRED_FILE)
+        export OS_CRED=${cred%.openrc}
+        . <(pass $cred)
+    else
+        chcreds
+    fi
+}
+
+function chcreds() {
+    rmcreds && openstack_creds "$1" && creds
+}
+
+function rmcreds() {
+    [ -f $CHCRED_FILE ] && rm -f $CHCRED_FILE
+    for v in $(env | grep -E '^OS_' | sed 's/=.*//'); do unset $v; done
+}
+
+function prcreds {
+    env | grep -E '^OS_'
+}
+
+function os_creds {
+    [ -z $OS_CRED ] || echo " $OS_CRED"
+}
+
+# vim:syntax=sh
