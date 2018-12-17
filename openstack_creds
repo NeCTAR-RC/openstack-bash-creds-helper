@@ -106,7 +106,7 @@ choose() {
 }
 
 # Discover credential files in pass
-for c in $(find $PSDIR -type f -name "*$MATCH$SUFFIX" | sort); do
+for c in $(find -L $PSDIR -type f -name "*$MATCH$SUFFIX" | sort); do
     c="${c#$PSDIR}"
     c="${c%$SUFFIX}"
     creds="$creds $c"
