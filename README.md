@@ -3,6 +3,8 @@ OpenStack bash creds helper
 This is a script to make managing OpenStack credentials easier, to be used in
 combination with included bash functions below (and a bash completion file).
 
+Update: now with colours!
+
 Use
 ---
 This script provides the following commands:

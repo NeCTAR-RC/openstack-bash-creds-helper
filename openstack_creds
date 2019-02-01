@@ -36,6 +36,22 @@ PSDIR="${PSDIR%/}/"
 MATCH=".openrc"
 SUFFIX=".gpg"
 
+# Colours
+BRIGHT=$(tput bold)
+RED="$(tput bold)$(tput setaf 1)"
+GREEN="$(tput bold)$(tput setaf 2)"
+YELLOW="$(tput bold)$(tput setaf 3)"
+BLUE="$(tput bold)$(tput setaf 4)"
+MAGENTA="$(tput bold)$(tput setaf 5)"
+NORMAL=$(tput sgr0)
+
+# colorise the environment in labels
+color_env() {
+  echo "$1" | sed -e "s/\/\(production\|prod\)\//\/${RED}\1${NORMAL}\//g" \
+                  -e "s/\/\(rctest\)\//\/${YELLOW}\1${NORMAL}\//g" \
+                  -e "s/\/\(development\|dev\)\//\/${MAGENTA}\1${NORMAL}\//g"
+}
+
 choose() {
     QUEST=$1
     VAR=$2
@@ -66,40 +82,42 @@ choose() {
 
     # Show list of choices
     if [ -z $CHOICE ]; then
-		[ -f $CHCREDS ] && DEF=$(cat $CHCREDS)
+        [ -f $CHCREDS ] && DEF=$(cat $CHCREDS)
 
-		DEF_MATCHED=0
-		for X in $*; do
-			if [ "$DEF" = "$X" ]; then
-				DEF_MATCHED=1
-				break
-			fi
-		done
-		if [ $DEF_MATCHED -eq 0 ]; then
-			DEF=$1
-		fi
-		while [ ! "$CHOICE" ]; do
-			echo "$QUEST: "
-			opt=1
-			for x in $*; do
-				printf "%3.d) ${x%$MATCH}\n" $opt
-				eval CHOICE_N$opt=$x
+        DEF_MATCHED=0
+        for X in $*; do
+            if [ "$DEF" = "$X" ]; then
+                DEF_MATCHED=1
+                break
+            fi
+        done
+        if [ $DEF_MATCHED -eq 0 ]; then
+            DEF=$1
+        fi
+        while [ ! "$CHOICE" ]; do
+            echo "${GREEN}==> ${NORMAL}${BRIGHT}$QUEST:${NORMAL}"
+            opt=1
+            for x in $*; do
+                label=$(color_env $x)
+                [ "$x" == "$DEF" ] && label="$label ${GREEN}*${NORMAL}"
+                printf " ${BRIGHT}%2.d${NORMAL} ${label%$MATCH}\n" $opt
+                eval CHOICE_N$opt=$x
                 opt=$((opt+1))
-			done
-			echo -n "[${DEF%$MATCH}]: "
-			read ANS
-			if [ "x$ANS" = "x" ]; then
-				CHOICE=$DEF
-			else
-				case $ANS in
-					[[:digit:]]*)
-						if [ $ANS -gt 0 -a $ANS -le $# ]; then
-							eval CHOICE=\$CHOICE_N$ANS
-						fi
+            done
+            echo -n "[${BLUE}${DEF%$MATCH}${NORMAL}]: "
+            read ANS
+            if [ "x$ANS" = "x" ]; then
+                CHOICE=$DEF
+            else
+                case $ANS in
+                    [[:digit:]]*)
+                        if [ $ANS -gt 0 -a $ANS -le $# ]; then
+                            eval CHOICE=\$CHOICE_N$ANS
+                        fi
                     ;;
-				esac
-			fi
-		done
+                esac
+            fi
+        done
     fi
 
     eval $VAR=$CHOICE
