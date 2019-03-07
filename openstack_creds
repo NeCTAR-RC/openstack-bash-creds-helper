@@ -99,7 +99,7 @@ choose() {
             opt=1
             for x in $*; do
                 label=$(color_env $x)
-                [ "$x" == "$DEF" ] && label="$label ${GREEN}*${NORMAL}"
+                [ "$x" == "$DEF" ] && label="${label%$MATCH} ${GREEN}*${NORMAL}"
                 printf " ${BRIGHT}%2.d${NORMAL} ${label%$MATCH}\n" $opt
                 eval CHOICE_N$opt=$x
                 opt=$((opt+1))

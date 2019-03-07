@@ -22,7 +22,6 @@ function chcreds() {
 }
 
 function rmcreds() {
-    [ -f $CHCRED_FILE ] && rm -f $CHCRED_FILE
     for v in $(env | grep -E '^OS_' | sed 's/=.*//'); do unset $v; done
 }
 
