@@ -3,7 +3,10 @@ OpenStack bash creds helper
 This is a script to make managing OpenStack credentials easier, to be used in
 combination with included bash functions below (and a bash completion file).
 
-Update: now with colours!
+This can optionally be used in conjunction with `fzf` the command line fuzzy
+finder (https://github.com/junegunn/fzf) for a faster, more interactive chooser
+(recommended!)
+
 
 Use
 ---

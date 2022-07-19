@@ -18,17 +18,27 @@ function creds() {
 }
 
 function chcreds() {
-    tput smcup && tput cup 0 0 && rmcreds && openstack_creds "$1" && creds && tput rmcup
+    if builtin type -P fzf &> /dev/null; then
+        # Using fzf (if installed) for cred chooser
+        rmcreds && openstack_creds "$1" && creds
+    else
+        # Regular choice list
+        tput smcup && tput cup 0 0 && rmcreds && \
+        openstack_creds "$1" && creds && tput rmcup
+    fi
 }
 
 function rmcreds() {
-    for v in $(env | grep -E '^OS_' | sed 's/=.*//'); do unset $v; done
+    for v in $(env | grep -E '^OS_' | sed 's/=.*//'); do
+      unset $v
+    done
 }
 
 function prcreds {
     env | grep -E '^OS_'
 }
 
+# Function useful for adding to your bash prompt
 function os_creds {
     [ -z $OS_CRED ] || echo " $OS_CRED"
 }

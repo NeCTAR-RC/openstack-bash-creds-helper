@@ -123,16 +123,33 @@ choose() {
     eval $VAR=$CHOICE
 }
 
-# Discover credential files in pass
-for c in $(find -L $PSDIR -type f -name "*$MATCH$SUFFIX" | sort); do
-    c="${c#$PSDIR}"
-    c="${c%$SUFFIX}"
-    creds="$creds $c"
-done
+choose_fzf() {
+  printf '%s\n' $1 | \
+    sed -e "s/\/\(production\|prod\)\//\/${RED}\1${NORMAL}\//g" \
+        -e "s/\/\(rctest\)\//\/${YELLOW}\1${NORMAL}\//g" \
+        -e "s/\/\(development\|dev\)\//\/${MAGENTA}\1${NORMAL}\//g" | \
+    awk '{printf "%02d\t%s\0", NR, $0;}' | \
+    fzf --exact --tabstop=2 --tac --ansi --read0
+}
 
-[ ! -z "$1" ] && cred=$1
+creds=$(find -L $PSDIR -type f -name "*$MATCH$SUFFIX" | sort | \
+        sed -e "s,$PSDIR,,g" -e "s,$SUFFIX,,g" -e "s,$MATCH,,g")
 
-choose 'Choose credential file' cred $creds
+# If the required choice was provided via argv
+if [ ! -z "$1" ]; then
+    cred=$1
+else
+    # If fzf is installed, prefer it over the older method
+    if builtin type -P fzf &> /dev/null; then
+        cred=$(choose_fzf "$creds" | awk '{print $NF}')  # strip index
+    else
+        choose 'Choose credential file' cred $creds
+    fi
+fi
 
-echo $cred > $CHCREDS
+[ -z $cred ] && exit 1
+
+# Add the .openrc suffix back again
+echo "$cred$MATCH" > $CHCREDS
+
 exit 0
