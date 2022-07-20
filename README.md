@@ -8,6 +8,11 @@ finder (https://github.com/junegunn/fzf) for a faster, more interactive chooser
 (recommended!)
 
 
+Demo
+----
+<p align="center"><img width="800" src="chcreds.svg"></p>
+
+
 Use
 ---
 This script provides the following commands:
@@ -16,6 +21,7 @@ This script provides the following commands:
   * `creds`    to load the existing credentials in a new environment
   * `rmcreds`  to clear the current credentials from your current environment
   * `prcreds`  to print the current credentials
+
 
 Installation
 ---------------
