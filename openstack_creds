@@ -128,8 +128,8 @@ choose_fzf() {
     sed -e "s/\/\(production\|prod\)\//\/${RED}\1${NORMAL}\//g" \
         -e "s/\/\(rctest\)\//\/${YELLOW}\1${NORMAL}\//g" \
         -e "s/\/\(development\|dev\)\//\/${MAGENTA}\1${NORMAL}\//g" | \
-    awk '{printf "%02d\t%s\0", NR, $0;}' | \
-    fzf --exact --tabstop=2 --tac --ansi --read0
+    awk '{printf "%02d\t%s\n", NR, $0;}' | \
+    fzf --exact --tabstop=2 --tac --ansi
 }
 
 creds=$(find -L $PSDIR -type f -name "*$MATCH$SUFFIX" | sort | \
