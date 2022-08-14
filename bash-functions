@@ -7,8 +7,11 @@
 #   . ~/projects/openstack-bash-creds-helper/bash-functions
 #
 # Andy Botting <andy@andybotting.com>
+# Jacob Aharon <jacob.aharon@unimelb.edu.au>
 
 CHCRED_FILE="${CHCRED_FILE:-$HOME/.chcred}"
+
+KEYSTONE_AUTH_VERSION="v3"
 
 function creds() {
     if [ -f "$CHCRED_FILE" ]; then
@@ -32,14 +35,129 @@ function chcreds() {
     fi
 }
 
+
+function creds_token() {
+    if [ -f "$CHCRED_FILE" ]; then
+        cred=$(cat "$CHCRED_FILE")
+        export OS_CRED=${cred%.openrc}
+        if result=$(__get_token "$(pass "$cred")"); then
+            token_envs=$result
+        else
+            return 1
+        fi
+        # shellcheck source=/dev/null
+        . <(echo "$token_envs")
+    else
+        chcreds_token
+    fi
+}
+
+function __get_token(){
+    original_envs=$(echo "$@" | awk '{print $2}')
+    chcreds_totp="false"
+    cmd=""
+    for env_var in $original_envs
+    do
+        # add single qoutes around the variables values
+        # otherwise special chars (like ")") in the password will bork out the script
+        escaped_env=$(awk -F= '{print $1"=\x27"$2"\x27"}' <<< "$env_var")
+        cmd+="${escaped_env} "
+
+        # if CHCREDS_MFA_TOTP_PASS is true, we need to get the totp
+        if [[ $env_var == *"CHCREDS_MFA_TOTP_PASS=true"* ]]; then
+            chcreds_totp="true"
+            echo "Enter your TOTP code: "  > /dev/stderr
+            read -r  totp_code
+            cmd+="TOTP_CODE=${totp_code} "
+        fi
+
+        # parse OS_AUTH_URL and add version number if it is missing
+        if [[ $env_var == *"OS_AUTH_URL"* ]]; then
+            auth_url=$(awk -F= '/OS_AUTH_URL/{print $2}' <<< "$env_var")
+            # conform the url to not end with '/' if it already have the version number, for easier parsing
+            if [[ $auth_url == *"/${KEYSTONE_AUTH_VERSION}/" ]]; then
+                auth_url=${auth_url%?}
+            fi
+            if [[ $auth_url != *"/${KEYSTONE_AUTH_VERSION}" ]]; then
+                if [[ $auth_url == *"/" ]]; then
+                    auth_url=${auth_url}"${KEYSTONE_AUTH_VERSION}"
+                else
+                    auth_url=${auth_url}"/${KEYSTONE_AUTH_VERSION}"
+                fi
+            fi
+            auth_url=${auth_url}"/auth/tokens"
+        fi
+    done
+
+    # Just password is the default
+    methods_data="\\\"methods\\\": [\\\"password\\\"],"
+    password_data="\\\"password\\\": {
+                    \\\"user\\\": {
+                        \\\"name\\\": \\\"\${OS_USERNAME}\\\",
+                        \\\"domain\\\": { \\\"name\\\": \\\"\${OS_USER_DOMAIN_NAME}\\\" },
+                        \\\"password\\\": \\\"\${OS_PASSWORD}\\\"
+                        }
+                    },"
+    totp_data="\\\"totp\\\": {}"
+    # Set the curl request for the token (password only / password and totp)
+    if [[ "${chcreds_totp}" == "true" ]]; then
+        methods_data="\\\"methods\\\": [\\\"password\\\",\\\"totp\\\"],"
+        totp_data="\\\"totp\\\": {
+                        \\\"user\\\": {
+                            \\\"name\\\": \\\"\${OS_USERNAME}\\\",
+                            \\\"domain\\\": { \\\"name\\\": \\\"\${OS_USER_DOMAIN_NAME}\\\" },
+                            \\\"passcode\\\": \\\"\${TOTP_CODE}\\\"
+                        }
+                    }"
+    fi
+
+    curl_data="\"
+        { \\\"auth\\\": {
+            \\\"identity\\\": {
+                ${methods_data}
+                ${password_data}
+                ${totp_data}
+                }
+            }
+        }\""
+    cmd+="; curl -i --silent  -X POST -H \"Content-Type: application/json\"   -d  ${curl_data} \"${auth_url}\""
+    if result=$(bash -c "${cmd}"); then
+        if ! x_subject_token=$(echo "${result}" | grep -i "x-subject-token: " ); then
+            echo "$result" > /dev/stderr
+            return 1
+        else
+            token=$(awk -v RS='\r\n' '{printf $2}' <<< "$x_subject_token")
+        fi
+    else
+        echo "Curl failed!" > /dev/stderr
+        return 1
+    fi
+
+    token_envs=$(grep -v -w -e "CHCREDS_MFA_TOTP_PASS" -e "OS_USERNAME" -e "OS_PASSWORD" -e "OS_USER_DOMAIN_NAME"<<< "$@")
+    token_envs+=" export OS_AUTH_TYPE=token export OS_TOKEN=${token}"
+
+    echo "$token_envs"
+}
+
+function chcreds_token() {
+    if builtin type -P fzf &> /dev/null; then
+        # Using fzf (if installed) for cred chooser
+        rmcreds && openstack_creds "$1" && creds_token
+    else
+        # Regular choice list
+        tput smcup && tput cup 0 0 && rmcreds && \
+        openstack_creds "$1" && creds_token && tput rmcup
+    fi
+}
+
 function rmcreds() {
-    for v in $(env | grep -E '^OS_' | sed 's/=.*//'); do
+    for v in $(env | grep -E '^(OS|CHCREDS)_' | sed 's/=.*//'); do
       unset "$v"
     done
 }
 
 function prcreds {
-    env | grep -E '^OS_'
+    env | grep -E '^(OS|CHCREDS)_'
 }
 
 # Function useful for adding to your bash prompt

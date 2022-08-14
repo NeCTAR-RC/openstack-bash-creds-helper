@@ -17,8 +17,10 @@ Use
 ---
 This script provides the following commands:
 
-  * `chchreds` to change which credentials to load
-  * `creds`    to load the existing credentials in a new environment
+  * `chchreds` to select and load credentials as username/password in the current environment
+  * `creds`    to load the existing selected credentials as username/password in a new environment
+  * `chchreds_token` to select and load credentials as a token in the current environment
+  * `creds_token`    to load the existing selected credentials as a token in a new environment
   * `rmcreds`  to clear the current credentials from your current environment
   * `prcreds`  to print the current credentials
 
@@ -49,12 +51,18 @@ Add your OpenStack openrc credentials files into pass, ensuring they have a
 The format of the credential files should look something like this:
 
 ``` sh
-    export OS_AUTH_URL=http://keystone.domain.name:5000/v3/
+    export OS_AUTH_URL=http://keystone.domain.name:5000/
     export OS_NO_CACHE=true
     export OS_PROJECT_NAME=tenant
     export OS_USERNAME=username
     export OS_PASSWORD=password
+    export OS_IDENTITY_API_VERSION=3
 ```
+To enable TOTP functionality (if TOTP is enabled for keystone/user and only in token mode) add:
+``` sh
+    export CHCREDS_MFA_TOTP_PASS=true
+```
+
 
 And optionally, you could add `$(os_creds)` to your PS1 var for printing your
 currently loaded credentials in your prompt. For example (coloured):
