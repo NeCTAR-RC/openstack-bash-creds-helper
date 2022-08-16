@@ -53,16 +53,15 @@ color_env() {
 }
 
 choose() {
-    QUEST=$1
-    VAR=$2
-    eval DEF=\$$VAR
+    VAR=$1
+    eval DEF=\$"$VAR"
     shift 2
     CHOICE=""
     # Match any given options
     case $DEF in
         [[:digit:]]*)
             opt=1
-            for x in $*; do
+            for x in "$@"; do
                 if [ "$DEF" = "$opt" ]; then
                     CHOICE=$x
                     break
@@ -71,7 +70,7 @@ choose() {
             done
         ;;
         [[:alpha:]]*)
-            for x in $*; do
+            for x in "$@"; do
                 if [ "$DEF$MATCH" = "$x" ]; then
                     CHOICE=$x
                     break
@@ -81,11 +80,11 @@ choose() {
     esac
 
     # Show list of choices
-    if [ -z $CHOICE ]; then
-        [ -f $CHCREDS ] && DEF=$(cat $CHCREDS)
+    if [ -z "$CHOICE" ]; then
+        [ -f "$CHCREDS" ] && DEF=$(cat "$CHCREDS")
 
         DEF_MATCHED=0
-        for X in $*; do
+        for X in "$@"; do
             if [ "$DEF" = "$X" ]; then
                 DEF_MATCHED=1
                 break
@@ -95,24 +94,24 @@ choose() {
             DEF=$1
         fi
         while [ ! "$CHOICE" ]; do
-            echo "${GREEN}==> ${NORMAL}${BRIGHT}$QUEST:${NORMAL}"
+            echo "${GREEN}==> ${NORMAL}${BRIGHT}Choose credential:${NORMAL}"
             opt=1
-            for x in $*; do
-                label=$(color_env $x)
-                [ "$x" == "$DEF" ] && label="${label%$MATCH} ${GREEN}*${NORMAL}"
-                printf " ${BRIGHT}%2.d${NORMAL} ${label%$MATCH}\n" $opt
-                eval CHOICE_N$opt=$x
+            for x in "$@"; do
+                label=$(color_env "$x")
+                [ "$x" == "$DEF" ] && label="${label%"$MATCH"} ${GREEN}*${NORMAL}"
+                printf " ${BRIGHT}%2.d${NORMAL} ${label%"$MATCH"}\n" $opt
+                eval CHOICE_N$opt="$x"
                 opt=$((opt+1))
             done
-            echo -n "[${BLUE}${DEF%$MATCH}${NORMAL}]: "
-            read ANS
-            if [ "x$ANS" = "x" ]; then
+            echo -n "[${BLUE}${DEF%"$MATCH"}${NORMAL}]: "
+            read -r ANS
+            if [ "$ANS" = "" ]; then
                 CHOICE=$DEF
             else
                 case $ANS in
                     [[:digit:]]*)
-                        if [ $ANS -gt 0 -a $ANS -le $# ]; then
-                            eval CHOICE=\$CHOICE_N$ANS
+                        if [ "$ANS" -gt 0 ] && [ "$ANS" -le $# ]; then
+                            eval CHOICE=\$CHOICE_N"$ANS"
                         fi
                     ;;
                 esac
@@ -120,11 +119,11 @@ choose() {
         done
     fi
 
-    eval $VAR=$CHOICE
+    eval "$VAR"="$CHOICE"
 }
 
 choose_fzf() {
-  printf '%s\n' $1 | \
+  printf '%s\n' "$1" | \
     sed -e "s/\/\(production\|prod\)\//\/${RED}\1${NORMAL}\//g" \
         -e "s/\/\(rctest\)\//\/${YELLOW}\1${NORMAL}\//g" \
         -e "s/\/\(development\|dev\)\//\/${MAGENTA}\1${NORMAL}\//g" | \
@@ -132,24 +131,25 @@ choose_fzf() {
     fzf --exact --tabstop=2 --tac --ansi
 }
 
-creds=$(find -L $PSDIR -type f -name "*$MATCH$SUFFIX" | sort | \
+creds=$(find -L "$PSDIR" -type f -name "*$MATCH$SUFFIX" | sort | \
         sed -e "s,$PSDIR,,g" -e "s,$SUFFIX,,g" -e "s,$MATCH,,g")
 
 # If the required choice was provided via argv
-if [ ! -z "$1" ]; then
+if [ -n "$1" ]; then
     cred=$1
 else
     # If fzf is installed, prefer it over the older method
     if builtin type -P fzf &> /dev/null; then
         cred=$(choose_fzf "$creds" | awk '{print $NF}')  # strip index
     else
-        choose 'Choose credential file' cred $creds
+        # shellcheck disable=SC2086
+        choose cred $creds
     fi
 fi
 
-[ -z $cred ] && exit 1
+[ -z "$cred" ] && exit 1
 
 # Add the .openrc suffix back again
-echo "$cred$MATCH" > $CHCREDS
+echo "$cred$MATCH" > "$CHCREDS"
 
 exit 0

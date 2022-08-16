@@ -1,3 +1,6 @@
+#!/bin/bash
+# shellcheck disable=SC2119,SC2120
+#
 # Bash functions for chcreds
 #
 # This file should be sourced from your ~/.bashrc file like:
@@ -8,10 +11,11 @@
 CHCRED_FILE="${CHCRED_FILE:-$HOME/.chcred}"
 
 function creds() {
-    if [ -f $CHCRED_FILE ]; then
-        cred=$(cat $CHCRED_FILE)
+    if [ -f "$CHCRED_FILE" ]; then
+        cred=$(cat "$CHCRED_FILE")
         export OS_CRED=${cred%.openrc}
-        . <(pass $cred)
+        # shellcheck source=openstack_creds
+        . <(pass "$cred")
     else
         chcreds
     fi
@@ -30,7 +34,7 @@ function chcreds() {
 
 function rmcreds() {
     for v in $(env | grep -E '^OS_' | sed 's/=.*//'); do
-      unset $v
+      unset "$v"
     done
 }
 
@@ -40,7 +44,7 @@ function prcreds {
 
 # Function useful for adding to your bash prompt
 function os_creds {
-    [ -z $OS_CRED ] || echo " $OS_CRED"
+    [ -z "$OS_CRED" ] || echo " $OS_CRED"
 }
 
 # vim:syntax=sh
