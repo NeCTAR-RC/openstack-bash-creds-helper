@@ -55,7 +55,7 @@ color_env() {
 choose() {
     VAR=$1
     eval DEF=\$"$VAR"
-    shift 2
+    shift 1
     CHOICE=""
     # Match any given options
     case $DEF in
