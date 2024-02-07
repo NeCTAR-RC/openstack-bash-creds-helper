@@ -14,6 +14,10 @@ CHCRED_FILE="${CHCRED_FILE:-$HOME/.chcred}"
 KEYSTONE_AUTH_VERSION="v3"
 
 function creds() {
+    export OS_PROJECT_DOMAIN_NAME=Default
+    export OS_USER_DOMAIN_NAME=Default
+    export OS_IDENTITY_API_VERSION=3
+    export OS_AUTH_TYPE=password
     if [ -f "$CHCRED_FILE" ]; then
         cred=$(cat "$CHCRED_FILE")
         export OS_CRED=${cred%.openrc}
