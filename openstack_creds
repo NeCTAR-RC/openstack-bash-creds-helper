@@ -3,7 +3,7 @@
 # To be used in combination with the functions in bash-functions file
 #
 # This script provides the following commands:
-#   * chchreds to change which credentials to load
+#   * chcreds to change which credentials to load
 #   * creds    to load the existing credentials in a new environment
 #   * rmcreds  to clear the current credentials from your current environment
 #

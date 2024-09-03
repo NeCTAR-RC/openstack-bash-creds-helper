@@ -1,4 +1,4 @@
-# completion for chchreds
+# completion for chcreds
 
 _chcreds () {
 	COMPREPLY=()

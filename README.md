@@ -17,9 +17,9 @@ Use
 ---
 This script provides the following commands:
 
-  * `chchreds` to select and load credentials as username/password in the current environment
+  * `chcreds` to select and load credentials as username/password in the current environment
   * `creds`    to load the existing selected credentials as username/password in a new environment
-  * `chchreds_token` to select and load credentials as a token in the current environment
+  * `chcreds_token` to select and load credentials as a token in the current environment
   * `creds_token`    to load the existing selected credentials as a token in a new environment
   * `rmcreds`  to clear the current credentials from your current environment
   * `prcreds`  to print the current credentials
