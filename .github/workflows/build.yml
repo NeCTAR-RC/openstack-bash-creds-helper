@@ -8,13 +8,14 @@ jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             goos: linux
             goarch: amd64
-          - os: ubuntu-latest
-            goos: linux
+          - os: macos-latest
+            goos: darwin
             goarch: arm64
 
     steps:
@@ -24,8 +25,8 @@ jobs:
       - name: Install GPGME dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update
-          sudo apt-get autopurge -y needrestart
+          export NEEDRESTART_MODE=l
+          sudo apt-get update -y
           sudo apt-get install -y libgpgme-dev pkg-config
 
       - name: Install GPGME dependencies (macOS)
@@ -39,13 +40,47 @@ jobs:
         with:
           go-version: '1.24'
 
+      - name: Set version
+        run: echo "VERSION=commit-${{ github.sha }}" >> $GITHUB_ENV
+
       - name: Build oscreds
         run: |
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
-          go build -o oscreds-${{ matrix.goos }}-${{ matrix.goarch }} ./...
+          go build -o oscreds-${{ matrix.goos }}-${{ matrix.goarch }}-${{ env.VERSION }} ./...
 
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
-          name: oscreds-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: oscreds-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: oscreds-${{ matrix.goos }}-${{ matrix.goarch }}-${{ env.VERSION }}
+          path: oscreds-${{ matrix.goos }}-${{ matrix.goarch }}-${{ env.VERSION }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Set version
+        run: echo "VERSION=commit-${{ github.sha }}" >> $GITHUB_ENV
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.VERSION }}
+          release_name: Release ${{ env.VERSION }}
+          draft: false
+          prerelease: false
+
+      - name: Upload binaries to release
+        run: |
+          for file in ./artifacts/*/*; do
+            echo "Uploading $file"
+            gh release upload ${{ env.VERSION }} "$file" --repo ${{ github.repository }}
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
