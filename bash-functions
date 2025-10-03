@@ -5,7 +5,10 @@
 function chcreds() {
     local tmpfile
     tmpfile=$(mktemp)
-    if oscreds "$@" > "$tmpfile" 2>/dev/null; then
+    # Ensure GPG pinentry can use the current tty for passphrase prompting
+    # and forward diagnostics to the terminal instead of hiding them.
+    export GPG_TTY=$(tty)
+    if oscreds "$@" > "$tmpfile" 2>/dev/tty; then
         source "$tmpfile"
         rm "$tmpfile"
         echo "Credentials loaded for $OS_CRED"
