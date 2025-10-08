@@ -45,6 +45,13 @@ type TokenResponse struct {
 	} `json:"token"`
 }
 
+// strip / and /v3 from string
+func getUrlPath(uri string, suffix string) string {
+	trimmed := strings.TrimSuffix(uri, "/")
+	host := strings.TrimSuffix(trimmed, "/v3")
+	return host + suffix
+}
+
 // getDomainSpec returns the domain specification, preferring ID over Name
 func getDomainSpec(creds *Credentials) map[string]interface{} {
 	if creds.UserDomainId != "" {
@@ -98,8 +105,7 @@ func GetUnscopedToken(creds *Credentials) (string, error) {
 		return "", err
 	}
 
-	authURL := strings.TrimSuffix(creds.AuthURL, "/")
-	url := authURL + "/v3/auth/tokens?nocatalog"
+	url := getUrlPath(creds.AuthURL, "/v3/auth/tokens?nocatalog")
 	debugf("Making unscoped token request to: %s\n", url)
 	debugf("Request body: %s\n", string(jsonData))
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
@@ -155,8 +161,7 @@ func GetApplicationCredentialToken(creds *Credentials) (string, *TokenResponse, 
 		return "", nil, err
 	}
 
-	authURL := strings.TrimSuffix(creds.AuthURL, "/")
-	url := authURL + "/v3/auth/tokens"
+	url := getUrlPath(creds.AuthURL, "/v3/auth/tokens")
 	debugf("Making application credential token request to: %s\n", url)
 	debugf("Request body: %s\n", string(jsonData))
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
@@ -243,8 +248,7 @@ func GetScopedToken(creds *Credentials, projectID string) (string, error) {
 		return "", err
 	}
 
-	authURL := strings.TrimSuffix(creds.AuthURL, "/")
-	url := authURL + "/v3/auth/tokens"
+	url := getUrlPath(creds.AuthURL, "/v3/auth/tokens")
 	debugf("Making scoped token request to: %s\n", url)
 	debugf("Request body: %s\n", string(jsonData))
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
@@ -325,8 +329,7 @@ func GetScopedTokenByProjectName(creds *Credentials, projectName string) (string
 		return "", nil, err
 	}
 
-	authURL := strings.TrimSuffix(creds.AuthURL, "/")
-	url := authURL + "/v3/auth/tokens?nocatalog"
+	url := getUrlPath(creds.AuthURL, "/v3/auth/tokens?nocatalog")
 	debugf("Making direct scoped token request to: %s\n", url)
 	debugf("Request body: %s\n", string(jsonData))
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
