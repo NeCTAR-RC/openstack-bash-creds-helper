@@ -6,9 +6,9 @@ combination with included bash functions below (and a bash completion file).
 It is written in Go and supports the following Keystone authentication types:
 * Password (scoped and unscoped)
 * Password + TOTP
-* ApplicationCredential
+* Application Credential
 
-This scan your password store directory for any passwords ending in .openrc
+This scan your password store directory for any passwords ending in `.openrc`
 and will display them in a list for you to choose.
 
 The list is powered by the `fzf` tool, which is natively included in the
@@ -22,7 +22,7 @@ projects.
 
 This tool also has preliminary support for TOTP, so for accounts that have a
 registered TOTP secret, it can prompt for your 6-digit TOTP code (e.g.
-Google Authenticator) before requesting a token from Keystone.
+Google Authenticator, Yubikey OATH) before requesting a token from Keystone.
 
 After loading your credentials and making a request to Keystone, the tool will
 then set some environment variables for you to make subsequent OpenStack API
@@ -36,24 +36,43 @@ Demo
 
 Use
 ---
-This bash functions script provides the following commands:
+The bash functions script in this repository provides the following commands:
 
   * `chcreds` to select and load credentials as username/password in the current environment
+  * `recreds` to reload the current credential, which is useful if your token expires
   * `rmcreds` to clear the current credentials from your current environment
   * `prcreds` to print the current credentials
 
-The `chcreds` function will call out to the oscreds binary to actually load the
-credentials, and then provide the environment variables for token auth.
+
+How it works
+-------------
+The `chcreds` function will call out to the `oscreds` binary to present the list
+of credentials available.
+
+Once a credential is chosen, `oscreds` will call out to `pass` to actually
+decrypt and return the contents to `oscreds`.
+
+`oscreds` will then interpret the credentials and make subsequent API calls to
+Keystone to eventually return an OpenStack token.
+
+The bash function scripts will load the appropriate environment variable for
+OpenStack CLI tools to work (almost) seamlessly.
+
+Optionally, you can add `$(os_creds)` to your `PS1` var for printing your
+currently loaded credentials in your prompt. For example (coloured):
+
+```
+    PS1='\[\033[01;32m\]\u@\h\[\033[01;34m\] \w\[\033[01;33m\]$(os_creds)\[\033[00m\] \$ '
+```
 
 
 Using token auth
 ----------------
-
 Using a Keystone token auth directly seems to works well with:
 * OpenStack client
 * OpenStack APIs
 
-Some known exceptions are:
+Some known exceptions are documented below:
 
 ### Swiftclient
 
@@ -67,49 +86,77 @@ swift --os-auth-token $OS_TOKEN --os-storage-url $OS_STORAGE_URL
 ```
 
 Installation
----------------
-First, put the `oscreds` script to somewhere in your path (e.g. ~/.local/bin)
+------------
+You can grab the latest build from the GitHub project releases page, or see
+below for instructions on building it yourself.
+
+Once you have the `oscreds` binary, put it somewhere in your path
+(e.g. `~/.local/bin`)
 
 ``` sh
     mkdir -p ~/.local/bin
     cp oscreds ~/.local/bin/
 ```
 
-Then source bash functions in your `.bashrc`:
+You'll then want to grab a copy of the `bash-functions` file from this repo
+and drop it into your `.bashrc.d` (or similar) or source it from your `.bashrc`
+to load automatically in your shell.
 
-``` sh
-	# openstack credentials
-    . ~/source/openstack-bash-creds-helper/bash-functions
-```
-
+Adding credentials
+------------------
 Add your OpenStack openrc credentials files into pass, ensuring they have a
-.openrc extension.
+.openrc extension for oscreds to find them.
 
 ``` sh
     pass insert -m my-password.openrc
 ```
 
-The format of the credential files should look something like this:
+You can then arrange the files in your password store in a way that is
+appropriate for your use.
 
+Credential examples
+-------------------
+
+Standard password auth
 ``` sh
-    export OS_AUTH_URL=https://keystone.domain.name:5000/
+    export OS_AUTH_URL=https://keystone.domain.name/
     export OS_PROJECT_NAME=myproject
     export OS_USERNAME=username
     export OS_PASSWORD=password
+```
 
+Application credential
+``` sh
+    export OS_AUTH_URL=https://keystone.domain.name/
+    export OS_AUTH_TYPE=v3applicationcredential
+    export OS_APPLICATION_CREDENTIAL_ID=app_cred_id
+    export OS_APPLICATION_CREDENTIAL_SECRET=app_cred_secret
 ```
 
 You can also omit any `OS_PROJECT_NAME` or `OS_PROJECT_ID` to optionally
 request a list of projects that you have roles assigned to choose from.
 
-To enable TOTP functionality (if TOTP is enabled for keystone/user and only in token mode) add:
 ``` sh
+    export OS_AUTH_URL=https://keystone.domain.name/
+    export OS_USERNAME=username
+    export OS_PASSWORD=password
+```
+
+To enable TOTP functionality (if password + TOTP is enabled for identity)
+then you need to append `OS_TOTP_REQUIRED=true` to your openrc to trigger
+the TOTP prompt.
+
+``` sh
+    export OS_AUTH_URL=https://keystone.domain.name/
+    export OS_PROJECT_NAME=myproject
+    export OS_PROJECT_ID=1234567890abcdef
+    export OS_USERNAME=username
+    export OS_PASSWORD=password
+    export OS_USER_DOMAIN_NAME=Default
+    export OS_PROJECT_DOMAIN_NAME=Default
     export OS_TOTP_REQUIRED=true
 ```
 
-And optionally, you could add `$(os_creds)` to your PS1 var for printing your
-currently loaded credentials in your prompt. For example (coloured):
-
-```
-    PS1='\[\033[01;32m\]\u@\h\[\033[01;34m\] \w\[\033[01;33m\]$(os_creds)\[\033[00m\] \$ '
-```
+Building
+--------
+A simple `go build` should suffice to compile the binary.
