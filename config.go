@@ -1,12 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
-
-	"github.com/proglottis/gpgme"
 )
 
 type CredentialFile struct {
@@ -82,65 +82,33 @@ func GetPassCredFiles() ([]CredentialFile, error) {
 	return credFiles, nil
 }
 
+// FindCredentialFile searches for a credential file by path or display name
+func FindCredentialFile(credFiles []CredentialFile, pathOrName string) CredentialFile {
+	// Normalize the input by removing .openrc extension if present
+	searchPath := strings.TrimSuffix(pathOrName, ".openrc")
+
+	for _, cf := range credFiles {
+		// Match against DisplayName (without .openrc)
+		if cf.DisplayName == searchPath {
+			return cf
+		}
+		// Match against Path (with .openrc)
+		if cf.Path == pathOrName || cf.Path == searchPath+".openrc" {
+			return cf
+		}
+	}
+
+	return CredentialFile{}
+}
+
 func LoadCredentials(credFile CredentialFile) (*Credentials, error) {
-	// Initialize GPGME context
-	ctx, err := gpgme.New()
+	decryptedText, err := passShow(credFile.Path)
 	if err != nil {
 		return nil, err
-	}
-	defer ctx.Release()
-
-	// Get password store directory and open encrypted file
-	passDir := getPassDir()
-	encryptedPath := filepath.Join(passDir, credFile.Path+".gpg")
-
-	file, err := os.Open(encryptedPath)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	// Create GPGME data from file
-	ciphertext, err := gpgme.NewDataFile(file)
-	if err != nil {
-		return nil, err
-	}
-	defer ciphertext.Close()
-
-	// Create output buffer for decrypted content
-	plaintext, err := gpgme.NewData()
-	if err != nil {
-		return nil, err
-	}
-	defer plaintext.Close()
-
-	// Decrypt using GPGME (automatically uses GPG agent)
-	err = ctx.Decrypt(ciphertext, plaintext)
-	if err != nil {
-		return nil, err
-	}
-
-	// Read decrypted content
-	_, err = plaintext.Seek(0, 0) // Reset to beginning
-	if err != nil {
-		return nil, err
-	}
-
-	// Read all decrypted data
-	var decryptedBytes []byte
-	buffer := make([]byte, 1024)
-	for {
-		n, readErr := plaintext.Read(buffer)
-		if n > 0 {
-			decryptedBytes = append(decryptedBytes, buffer[:n]...)
-		}
-		if readErr != nil {
-			break
-		}
 	}
 
 	creds := &Credentials{}
-	lines := strings.Split(string(decryptedBytes), "\n")
+	lines := strings.Split(decryptedText, "\n")
 
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -190,6 +158,40 @@ func LoadCredentials(credFile CredentialFile) (*Credentials, error) {
 	}
 
 	return creds, nil
+}
+
+func passShow(entry string) (string, error) {
+	cmd := exec.Command("pass", "show", entry)
+	cmd.Env = withPasswordStoreDir(os.Environ(), getPassDir())
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		msg := strings.TrimSpace(string(output))
+		if msg != "" {
+			msg = ": " + msg
+		}
+		return "", fmt.Errorf("pass show %q failed: %w%s", entry, err, msg)
+	}
+
+	return string(output), nil
+}
+
+func withPasswordStoreDir(env []string, passDir string) []string {
+	const key = "PASSWORD_STORE_DIR="
+	out := make([]string, 0, len(env)+1)
+	found := false
+	for _, item := range env {
+		if strings.HasPrefix(item, key) {
+			out = append(out, key+passDir)
+			found = true
+			continue
+		}
+		out = append(out, item)
+	}
+	if !found {
+		out = append(out, key+passDir)
+	}
+	return out
 }
 
 // HasProjectDefined returns true if the credentials have a project already specified

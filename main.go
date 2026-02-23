@@ -32,10 +32,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	credFile := SelectCredentialFile(credFiles)
-	if credFile.Path == "" {
-		fmt.Fprintf(os.Stderr, "No credential file selected\n")
-		os.Exit(1)
+	var credFile CredentialFile
+	// Check if a credential path was provided as a positional argument
+	if flag.NArg() > 0 {
+		credPath := flag.Arg(0)
+		credFile = FindCredentialFile(credFiles, credPath)
+		if credFile.Path == "" {
+			fmt.Fprintf(os.Stderr, "Credential file not found: %s\n", credPath)
+			os.Exit(1)
+		}
+	} else {
+		// Let user select from available files
+		credFile = SelectCredentialFile(credFiles)
+		if credFile.Path == "" {
+			fmt.Fprintf(os.Stderr, "No credential file selected\n")
+			os.Exit(1)
+		}
 	}
 
 	// Load credentials from openrc files

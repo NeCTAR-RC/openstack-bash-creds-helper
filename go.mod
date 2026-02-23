@@ -2,10 +2,7 @@ module oscreds
 
 go 1.24.4
 
-require (
-	github.com/junegunn/fzf v0.65.1
-	github.com/proglottis/gpgme v0.1.5
-)
+require github.com/junegunn/fzf v0.65.1
 
 require (
 	github.com/charlievieth/fastwalk v1.0.12 // indirect

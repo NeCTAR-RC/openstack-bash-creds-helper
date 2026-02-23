@@ -16,6 +16,14 @@ function chcreds() {
     fi
 }
 
+function recred() {
+    if [ -n "$OS_CRED" ]; then
+        chcreds $OS_CRED
+    else
+        chcreds
+    fi
+}
+
 function rmcreds() {
     for v in $(env | grep -E '^OS_' | sed 's/=.*//'); do
       unset "$v"
