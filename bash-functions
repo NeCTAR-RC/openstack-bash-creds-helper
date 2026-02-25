@@ -3,17 +3,13 @@
 
 
 function chcreds() {
-    local tmpfile
-    tmpfile=$(mktemp)
-    if oscreds "$@" > "$tmpfile" 2>/dev/null; then
-        source "$tmpfile"
-        rm "$tmpfile"
-        echo "Credentials loaded for $OS_CRED"
-    else
-        rm "$tmpfile"
-        echo "Failed to load credentials"
+    local creds
+    if ! creds=$(oscreds "$@"); then
+        echo "Failed to load credentials" >&2
         return 1
     fi
+    source <(printf '%s\n' "$creds")
+    echo "Credentials loaded for $OS_CRED"
 }
 
 function recred() {
