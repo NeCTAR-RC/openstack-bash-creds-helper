@@ -157,6 +157,19 @@ the TOTP prompt.
     export OS_TOTP_REQUIRED=true
 ```
 
+Bash completion
+---------------
+A bash completion script is also included for your convenience.
+
+To install it for your user, the following should work:
+
+``` sh
+    mkdir -p ~/.local/share/bash-completion/completions
+    cp bash-completion ~/.local/share/bash-completion/completions/chcreds
+```
+
+You can then use tab completion to complete the filename of the credentials file.
+
 Building
 --------
 A simple `go build` should suffice to compile the binary.
