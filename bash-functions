@@ -1,7 +1,6 @@
 #!/bin/bash
 # shellcheck disable=SC1090
 
-
 function chcreds() {
     local creds
     if ! creds=$(oscreds "$@"); then
@@ -13,26 +12,30 @@ function chcreds() {
 }
 
 function recred() {
-    if [ -n "$OS_CRED" ]; then
-        chcreds $OS_CRED
-    else
-        chcreds
-    fi
+    chcreds "$OS_CRED"
 }
 
 function rmcreds() {
-    for v in $(env | grep -E '^OS_' | sed 's/=.*//'); do
-      unset "$v"
+    local v
+    for v in ${!OS_@}; do
+        unset "$v"
     done
 }
 
-function prcreds {
-    env | awk -F'[=_]' '/^OS_/ {if ($2 == "PASSWORD" || $2 == "TOKEN") print "OS_"$2"=******" ; else print $0}'
+function prcreds() {
+    local varname
+    for varname in ${!OS_@}; do
+        if [[ "$varname" == *PASSWORD* || "$varname" == *TOKEN* || "$varname" == *SECRET* ]]; then
+            printf '%s=******\n' "$varname"
+        else
+            # ${!varname} dynamically looks up the value of the variable
+            printf '%s=%s\n' "$varname" "${!varname}"
+        fi
+    done
 }
 
-# Function useful for adding to your bash prompt
-function os_creds {
-    [ -z "$OS_CRED" ] || echo " $OS_CRED"
+function os_creds() {
+    printf '%s' "${OS_CRED:+ $OS_CRED}"
 }
 
 # vim:syntax=sh

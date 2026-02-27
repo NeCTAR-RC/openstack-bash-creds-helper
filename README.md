@@ -58,11 +58,11 @@ Keystone to eventually return an OpenStack token.
 The bash function scripts will load the appropriate environment variable for
 OpenStack CLI tools to work (almost) seamlessly.
 
-Optionally, you can add `$(os_creds)` to your `PS1` var for printing your
+Optionally, you can add `${OS_CRED:+ \[$OS_CRED\]}` to your `PS1` var for printing your
 currently loaded credentials in your prompt. For example (coloured):
 
 ```
-    PS1='\[\033[01;32m\]\u@\h\[\033[01;34m\] \w\[\033[01;33m\]$(os_creds)\[\033[00m\] \$ '
+    PS1='\[\033[01;32m\]\u@\h\[\033[01;34m\] \w\[\033[01;33m\]${OS_CRED:+ \[$OS_CRED\]}\[\033[00m\] \$ '
 ```
 
 
