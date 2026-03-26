@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"sort"
-	"strings"
 )
 
 type Project struct {
@@ -26,8 +25,8 @@ type ProjectsResponse struct {
 }
 
 func ListProjects(authURL, token string) ([]Project, error) {
-	authURL = strings.TrimSuffix(authURL, "/")
-	req, err := http.NewRequest("GET", authURL+"/v3/auth/projects", nil)
+	url := getUrlPath(authURL, "/v3/auth/projects")
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
