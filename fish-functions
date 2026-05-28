@@ -1,0 +1,36 @@
+function chcreds
+    oscreds --shell fish $argv | source
+    if test $pipestatus[1] -ne 0
+        echo "Failed to load credentials" >&2
+        return 1
+    end
+    echo "Credentials loaded for $OS_CRED"
+end
+
+function recred
+    chcreds $OS_CRED
+end
+
+function rmcreds
+    set -l os_vars (set --names | string match 'OS_*')
+    for v in $os_vars
+        set -eg $v
+    end
+end
+
+function prcreds
+    set -l os_vars (set --names | string match 'OS_*')
+    for v in $os_vars
+        if string match -q '*PASSWORD*' $v; or string match -q '*TOKEN*' $v; or string match -q '*SECRET*' $v
+            printf '%s=******\n' $v
+        else
+            printf '%s=%s\n' $v $$v
+        end
+    end
+end
+
+function os_creds
+    if set -q OS_CRED
+        printf ' %s' $OS_CRED
+    end
+end

@@ -4,9 +4,12 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 )
 
 var debugMode bool
+
+var shellType string
 
 func debugf(format string, args ...interface{}) {
 	if debugMode {
@@ -16,7 +19,13 @@ func debugf(format string, args ...interface{}) {
 
 func main() {
 	debug := flag.Bool("debug", false, "Enable debug output")
+	flag.StringVar(&shellType, "shell", "bash", "Shell type for output format (bash or fish)")
 	flag.Parse()
+
+	if shellType != "bash" && shellType != "fish" {
+		fmt.Fprintf(os.Stderr, "Error: unsupported shell type %q (use bash or fish)\n", shellType)
+		os.Exit(1)
+	}
 
 	debugMode = *debug
 	DebugMode = *debug
@@ -198,26 +207,40 @@ func main() {
 	outputEnvironmentVars(credFile, selectedProject, scopedToken, creds)
 }
 
+func fishEscape(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `'`, `\'`)
+	return "'" + s + "'"
+}
+
+func outputVar(name string, value string) {
+	if shellType == "fish" {
+		fmt.Printf("set -gx %s %s\n", name, fishEscape(value))
+	} else {
+		fmt.Printf("export %s=%s\n", name, value)
+	}
+}
+
 func outputEnvironmentVars(credFile CredentialFile, project *Project, token string, creds *Credentials) {
-	fmt.Printf("export OS_CRED=%s\n", credFile.DisplayName)
-	fmt.Printf("export OS_IDENTITY_API_VERSION=3\n")
-	fmt.Printf("export OS_AUTH_URL=%s\n", creds.AuthURL)
-	fmt.Printf("export OS_PROJECT_ID=%s\n", project.ID)
-	fmt.Printf("export OS_TOKEN=%s\n", token)
-	fmt.Printf("export OS_AUTH_TYPE=token\n")
+	outputVar("OS_CRED", credFile.DisplayName)
+	outputVar("OS_IDENTITY_API_VERSION", "3")
+	outputVar("OS_AUTH_URL", creds.AuthURL)
+	outputVar("OS_PROJECT_ID", project.ID)
+	outputVar("OS_TOKEN", token)
+	outputVar("OS_AUTH_TYPE", "token")
 	if creds.Region != "" {
-		fmt.Printf("export OS_REGION_NAME=%s\n", creds.Region)
+		outputVar("OS_REGION_NAME", creds.Region)
 	}
 }
 
 func outputSystemScopeVars(credFile CredentialFile, token string, creds *Credentials) {
-	fmt.Printf("export OS_CRED=%s/system\n", credFile.DisplayName)
-	fmt.Printf("export OS_IDENTITY_API_VERSION=3\n")
-	fmt.Printf("export OS_AUTH_URL=%s\n", creds.AuthURL)
-	fmt.Printf("export OS_SYSTEM_SCOPE=%s\n", creds.SystemScope)
-	fmt.Printf("export OS_TOKEN=%s\n", token)
-	fmt.Printf("export OS_AUTH_TYPE=token\n")
+	outputVar("OS_CRED", credFile.DisplayName+"/system")
+	outputVar("OS_IDENTITY_API_VERSION", "3")
+	outputVar("OS_AUTH_URL", creds.AuthURL)
+	outputVar("OS_SYSTEM_SCOPE", creds.SystemScope)
+	outputVar("OS_TOKEN", token)
+	outputVar("OS_AUTH_TYPE", "token")
 	if creds.Region != "" {
-		fmt.Printf("export OS_REGION_NAME=%s\n", creds.Region)
+		outputVar("OS_REGION_NAME", creds.Region)
 	}
 }

@@ -1,0 +1,15 @@
+function __oscreds_cred_files
+    set -l prefix $PASSWORD_STORE_DIR
+    if test -z "$prefix"
+        set prefix $HOME/.password-store
+    end
+    set -l prefix (string replace -r '/$' '' $prefix)/
+
+    find $prefix -name '*.openrc.gpg' -not -path '*/.*' 2>/dev/null \
+        | string replace -r "^$prefix" '' \
+        | string replace -r '\.openrc\.gpg$' ''
+end
+
+complete -c chcreds -f -a '(__oscreds_cred_files)'
+complete -c chcreds -s d -l debug -d 'Enable debug output'
+complete -c chcreds -l shell -x -a 'bash fish' -d 'Shell type for output format'
