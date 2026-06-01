@@ -1,4 +1,5 @@
 function chcreds
+    rmcreds
     oscreds --shell fish $argv | source
     if test $pipestatus[1] -ne 0
         echo "Failed to load credentials" >&2
