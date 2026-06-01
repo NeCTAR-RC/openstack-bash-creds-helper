@@ -15,3 +15,4 @@ end
 complete -c chcreds -f -a '(__oscreds_cred_files)'
 complete -c chcreds -s d -l debug -d 'Enable debug output'
 complete -c chcreds -l shell -x -a 'bash fish' -d 'Shell type for output format'
+complete -c chcreds -l project -x -d 'Project name to scope to'
