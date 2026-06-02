@@ -7,6 +7,7 @@ function chcreds() {
         echo "Failed to load credentials" >&2
         return 1
     fi
+    rmcreds
     source <(printf '%s\n' "$creds")
     echo "Credentials loaded for $OS_CRED"
 }
