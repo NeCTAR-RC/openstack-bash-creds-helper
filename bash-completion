@@ -4,6 +4,12 @@ _chcreds () {
 	COMPREPLY=()
 	local cur="${COMP_WORDS[COMP_CWORD]}"
 
+	if [[ "$cur" == -* ]]; then
+		local opts="-debug -shell -project"
+		COMPREPLY=($(compgen -W "$opts" -- "$cur"))
+		return
+	fi
+
 	prefix="${PASSWORD_STORE_DIR:-$HOME/.password-store/}"
 	prefix="${prefix%/}/"
 	suffix=".openrc.gpg"

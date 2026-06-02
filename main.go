@@ -11,6 +11,8 @@ var debugMode bool
 
 var shellType string
 
+var projectName string
+
 func debugf(format string, args ...interface{}) {
 	if debugMode {
 		fmt.Fprintf(os.Stderr, "DEBUG: "+format, args...)
@@ -20,6 +22,7 @@ func debugf(format string, args ...interface{}) {
 func main() {
 	debug := flag.Bool("debug", false, "Enable debug output")
 	flag.StringVar(&shellType, "shell", "bash", "Shell type for output format (bash or fish)")
+	flag.StringVar(&projectName, "project", "", "Project name to scope to (skips interactive selection)")
 	flag.Parse()
 
 	if shellType != "bash" && shellType != "fish" {
@@ -131,7 +134,30 @@ func main() {
 		return
 	}
 
-	// If project is already defined in the credential file, get scoped token directly
+	if projectName != "" {
+		debugf("Project specified via -project flag: %s\n", projectName)
+
+		var scopedToken string
+		var selectedProject *Project
+		var err error
+
+		var tokenResponse *TokenResponse
+		scopedToken, tokenResponse, err = GetScopedTokenByProjectName(creds, projectName)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error getting scoped token for project %q: %v\n", projectName, err)
+			os.Exit(1)
+		}
+		selectedProject = &Project{
+			ID:   tokenResponse.Token.Project.ID,
+			Name: tokenResponse.Token.Project.Name,
+		}
+
+		credFile.DisplayName = credFile.DisplayName + "/" + selectedProject.Name
+		debugf("Successfully got scoped token for project: %s\n", selectedProject.Name)
+		outputEnvironmentVars(credFile, selectedProject, scopedToken, creds)
+		return
+	}
+
 	if creds.HasProjectDefined() {
 		debugf("Project defined in credentials - getting scoped token directly\n")
 
@@ -195,7 +221,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Update the credential file display name to include the selected project
 	credFile.DisplayName = credFile.DisplayName + "/" + selectedProject.Name
 
 	scopedToken, err := GetScopedToken(creds, selectedProject.ID)
