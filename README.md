@@ -1,7 +1,8 @@
-OpenStack bash creds helper
-===========================
+OpenStack shell creds helper
+============================
 This is a tool to make managing OpenStack credentials easier, to be used in
-combination with included bash functions below (and a bash completion file).
+combination with included shell function scripts (and completion files) for
+bash and fish.
 
 It is written in Go and supports the following Keystone authentication types:
 * Password (scoped and unscoped)
@@ -36,7 +37,7 @@ Demo
 
 Use
 ---
-The bash functions script in this repository provides the following commands:
+The shell function scripts in this repository provide the following commands:
 
   * `chcreds` to select and load credentials as username/password in the current environment
   * `recreds` to reload the current credential, which is useful if your token expires
@@ -55,14 +56,23 @@ decrypt and return the contents to `oscreds`.
 `oscreds` will then interpret the credentials and make subsequent API calls to
 Keystone to eventually return an OpenStack token.
 
-The bash function scripts will load the appropriate environment variable for
+The shell function scripts will load the appropriate environment variable for
 OpenStack CLI tools to work (almost) seamlessly.
 
-Optionally, you can add `${OS_CRED:+ \[$OS_CRED\]}` to your `PS1` var for printing your
-currently loaded credentials in your prompt. For example (coloured):
+Optionally, you can display your currently loaded credentials in your prompt:
+
+**Bash** — add `${OS_CRED:+ \[$OS_CRED\]}` to your `PS1` var. For example (coloured):
 
 ```
     PS1='\[\033[01;32m\]\u@\h\[\033[01;34m\] \w\[\033[01;33m\]${OS_CRED:+ \[$OS_CRED\]}\[\033[00m\] \$ '
+```
+
+**Fish** — add the following to your `fish_prompt` function:
+
+```
+    if set -q OS_CRED
+        printf ' [%s]' $OS_CRED
+    end
 ```
 
 
@@ -98,9 +108,22 @@ Once you have the `oscreds` binary, put it somewhere in your path
     cp oscreds ~/.local/bin/
 ```
 
-You'll then want to grab a copy of the `bash-functions` file from this repo
+### Bash
+
+Grab a copy of the `bash-functions` file from this repo
 and drop it into your `.bashrc.d` (or similar) or source it from your `.bashrc`
 to load automatically in your shell.
+
+### Fish
+
+Source the `fish-functions` file from your `~/.config/fish/config.fish`:
+
+``` sh
+    source /path/to/fish-functions
+```
+
+Or copy the individual functions into `~/.config/fish/functions/` as
+autoloaded `.fish` files (e.g. `~/.config/fish/functions/chcreds.fish`).
 
 Adding credentials
 ------------------
@@ -157,15 +180,26 @@ the TOTP prompt.
     export OS_TOTP_REQUIRED=true
 ```
 
-Bash completion
----------------
-A bash completion script is also included for your convenience.
+Shell completion
+----------------
+Completion scripts for both bash and fish are included.
+
+### Bash
 
 To install it for your user, the following should work:
 
 ``` sh
     mkdir -p ~/.local/share/bash-completion/completions
     cp bash-completion ~/.local/share/bash-completion/completions/chcreds
+```
+
+### Fish
+
+To install it for your user, copy the completion file to your fish completions directory:
+
+``` sh
+    mkdir -p ~/.config/fish/completions
+    cp fish-completion ~/.config/fish/completions/chcreds.fish
 ```
 
 You can then use tab completion to complete the filename of the credentials file.
