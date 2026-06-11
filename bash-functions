@@ -18,19 +18,18 @@ function recred() {
 
 function rmcreds() {
     local v
-    for v in ${!OS_@}; do
+    for v in $(env | grep '^OS_' | cut -d= -f1); do
         unset "$v"
     done
 }
 
 function prcreds() {
     local varname
-    for varname in ${!OS_@}; do
+    for varname in $(env | grep '^OS_' | cut -d= -f1); do
         if [[ "$varname" == *PASSWORD* || "$varname" == *TOKEN* || "$varname" == *SECRET* ]]; then
             printf '%s=******\n' "$varname"
         else
-            # ${!varname} dynamically looks up the value of the variable
-            printf '%s=%s\n' "$varname" "${!varname}"
+            printf '%s=%s\n' "$varname" "$(printenv "$varname")"
         fi
     done
 }
