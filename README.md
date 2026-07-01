@@ -59,7 +59,11 @@ Keystone to eventually return an OpenStack token.
 The shell function scripts will load the appropriate environment variable for
 OpenStack CLI tools to work (almost) seamlessly.
 
-Optionally, you can display your currently loaded credentials in your prompt:
+Optionally, you can display your currently loaded credentials in your prompt.
+See [Prompt customisation](#prompt-customisation) below for the recommended,
+fully customisable `chcreds-ps1` segment.
+
+For a quick, no-frills option you can reference `$OS_CRED` directly:
 
 **Bash** — add `${OS_CRED:+ \[$OS_CRED\]}` to your `PS1` var. For example (coloured):
 
@@ -74,6 +78,108 @@ Optionally, you can display your currently loaded credentials in your prompt:
         printf ' [%s]' $OS_CRED
     end
 ```
+
+
+Prompt customisation
+--------------------
+For a richer, customisable prompt segment (inspired by
+[kube-ps1](https://github.com/jonmosco/kube-ps1)), source the `chcreds-ps1.sh` file
+(`chcreds-ps1.fish` for fish) and add `$(chcreds_ps1)` to your prompt. It renders a
+segment like `(☁ team/prod)`.
+
+**Bash** — source `chcreds-ps1.sh` from your `.bashrc` and reference `chcreds_ps1` in `PS1`:
+
+``` sh
+    source /path/to/chcreds-ps1.sh
+    PS1='$(chcreds_ps1) \u@\h \w \$ '
+```
+
+**Zsh** — the same file works in zsh; enable `PROMPT_SUBST` so the segment is
+evaluated each time:
+
+``` sh
+    source /path/to/chcreds-ps1.sh
+    setopt PROMPT_SUBST
+    PROMPT='$(chcreds_ps1) %n@%m %~ %# '
+```
+
+**Fish** — source `chcreds-ps1.fish` and call `chcreds_ps1` from your `fish_prompt`:
+
+``` fish
+    source /path/to/chcreds-ps1.fish
+
+    function fish_prompt
+        printf '%s ' (chcreds_ps1)
+        # ... the rest of your prompt ...
+    end
+```
+
+### Dynamic (environment-aware) colours
+
+By default the credential name uses the single colour `CHCREDS_PS1_CRED_COLOR`. To
+colour it dynamically (for example by environment), define your own function
+that takes the credential name and prints a colour, then point
+`CHCREDS_PS1_CRED_COLOR_FUNCTION` at it:
+
+``` sh
+    chcreds_cred_color() {
+        case "$1" in
+            *prod*) printf 'red' ;;
+            *dev*)  printf 'magenta' ;;
+            *test*) printf 'yellow' ;;
+            *)      printf 'cyan' ;;
+        esac
+    }
+    export CHCREDS_PS1_CRED_COLOR_FUNCTION=chcreds_cred_color
+```
+
+The equivalent in fish:
+
+``` fish
+    function chcreds_cred_color
+        switch (string lower -- $argv[1])
+            case '*prod*'; printf 'red'
+            case '*dev*';  printf 'magenta'
+            case '*test*'; printf 'yellow'
+            case '*';      printf 'cyan'
+        end
+    end
+    set -gx CHCREDS_PS1_CRED_COLOR_FUNCTION chcreds_cred_color
+```
+
+### Configuration
+
+All options are `CHCREDS_PS1_*` environment variables. Set them before or after
+sourcing the file. Colours accept a name (`black`, `red`, `green`, `yellow`,
+`blue`, `magenta`, `cyan`, `white`), a 256-colour code (`0`-`255`; fish accepts
+a hex value such as `ff8800`), or an empty string for no colour.
+
+| Variable                    | Default | Purpose                                                        |
+|-----------------------------|---------|----------------------------------------------------------------|
+| `CHCREDS_PS1_PREFIX`             | `(`     | Opening text of the segment                                    |
+| `CHCREDS_PS1_SUFFIX`             | `)`     | Closing text of the segment                                    |
+| `CHCREDS_PS1_SEPARATOR`          | space   | Text between the symbol and the credential name                |
+| `CHCREDS_PS1_SYMBOL_ENABLE`      | `true`  | Show the symbol                                                |
+| `CHCREDS_PS1_SYMBOL`             | `default` | `default` for the cloud glyph `☁`, `openstack` for the nerd-font glyph, or any other value to use it literally |
+| `CHCREDS_PS1_SYMBOL_PADDING`     | `false` | Add a space after the symbol (helps with some glyph fonts)     |
+| `CHCREDS_PS1_HIDE_IF_NOCREDS`    | `true`  | Show nothing when no credentials are loaded                    |
+| `CHCREDS_PS1_PREFIX_COLOR`       | (none)  | Colour of the prefix                                           |
+| `CHCREDS_PS1_SYMBOL_COLOR`       | `red`   | Colour of the symbol                                           |
+| `CHCREDS_PS1_CRED_COLOR`         | `cyan`  | Colour of the credential name (unless a colour function is set) |
+| `CHCREDS_PS1_SUFFIX_COLOR`       | (none)  | Colour of the suffix                                           |
+| `CHCREDS_PS1_BG_COLOR`           | (none)  | Background colour for the coloured parts                       |
+| `CHCREDS_PS1_CRED_COLOR_FUNCTION`| (unset) | Function name that returns the credential colour              |
+| `CHCREDS_PS1_CRED_FUNCTION`      | (unset) | Function name that transforms the displayed credential text    |
+
+To use the nerd-font OpenStack glyph (requires a
+[Nerd Font](https://www.nerdfonts.com/)) instead of the default cloud symbol:
+
+``` sh
+    export CHCREDS_PS1_SYMBOL=openstack
+```
+
+Or set any other value to use it literally as the symbol, for example
+`export CHCREDS_PS1_SYMBOL='OS'`.
 
 
 Using token auth
@@ -108,11 +214,18 @@ Once you have the `oscreds` binary, put it somewhere in your path
     cp oscreds ~/.local/bin/
 ```
 
-### Bash
+### Bash (and Zsh)
 
 Grab a copy of the `bash-functions` file from this repo
 and drop it into your `.bashrc.d` (or similar) or source it from your `.bashrc`
-to load automatically in your shell.
+(or `.zshrc`) to load automatically in your shell.
+
+Optionally source the `chcreds-ps1.sh` file too, to enable the customisable prompt
+segment (see [Prompt customisation](#prompt-customisation)):
+
+``` sh
+    source /path/to/chcreds-ps1.sh
+```
 
 ### Fish
 
@@ -124,6 +237,13 @@ Source the `fish-functions` file from your `~/.config/fish/config.fish`:
 
 Or copy the individual functions into `~/.config/fish/functions/` as
 autoloaded `.fish` files (e.g. `~/.config/fish/functions/chcreds.fish`).
+
+Optionally source `chcreds-ps1.fish` for the customisable prompt segment
+(see [Prompt customisation](#prompt-customisation)):
+
+``` sh
+    source /path/to/chcreds-ps1.fish
+```
 
 Adding credentials
 ------------------
