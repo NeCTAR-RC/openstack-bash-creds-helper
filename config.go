@@ -15,6 +15,11 @@ type CredentialFile struct {
 	DisplayName string
 }
 
+type EnvVar struct {
+	Key   string
+	Value string
+}
+
 type Credentials struct {
 	AuthURL                     string
 	Username                    string
@@ -26,9 +31,14 @@ type Credentials struct {
 	TOTPRequired                bool
 	ProjectID                   string
 	ProjectName                 string
+	DomainID                    string
+	DomainName                  string
 	SystemScope                 string
 	ApplicationCredentialID     string
 	ApplicationCredentialSecret string
+	ProjectDiscover             bool
+	Passthrough                 bool
+	RawVars                     []EnvVar
 }
 
 func getPassDir() string {
@@ -124,6 +134,12 @@ func LoadCredentials(credFile CredentialFile) (*Credentials, error) {
 		key := strings.TrimSpace(parts[0])
 		value := strings.Trim(strings.TrimSpace(parts[1]), "\"'")
 
+		// Keep the original variables for passthrough mode, excluding the
+		// ones that only control chcreds behaviour
+		if strings.HasPrefix(key, "OS_") && !strings.HasPrefix(key, "OS_CRED_") && key != "OS_TOTP_REQUIRED" {
+			creds.RawVars = append(creds.RawVars, EnvVar{Key: key, Value: value})
+		}
+
 		switch key {
 		case "OS_AUTH_URL":
 			creds.AuthURL = value
@@ -141,10 +157,18 @@ func LoadCredentials(credFile CredentialFile) (*Credentials, error) {
 			creds.ProjectID = value
 		case "OS_PROJECT_NAME":
 			creds.ProjectName = value
+		case "OS_DOMAIN_ID":
+			creds.DomainID = value
+		case "OS_DOMAIN_NAME":
+			creds.DomainName = value
 		case "OS_SYSTEM_SCOPE":
 			creds.SystemScope = value
 		case "OS_TOTP_REQUIRED":
-			creds.TOTPRequired = strings.ToLower(value) == "true" || value == "1"
+			creds.TOTPRequired = isTruthy(value)
+		case "OS_CRED_PROJECT_DISCOVER":
+			creds.ProjectDiscover = isTruthy(value)
+		case "OS_CRED_PASSTHROUGH":
+			creds.Passthrough = isTruthy(value)
 		case "OS_APPLICATION_CREDENTIAL_ID":
 			creds.ApplicationCredentialID = value
 		case "OS_APPLICATION_CREDENTIAL_SECRET":
@@ -158,6 +182,10 @@ func LoadCredentials(credFile CredentialFile) (*Credentials, error) {
 	}
 
 	return creds, nil
+}
+
+func isTruthy(value string) bool {
+	return strings.ToLower(value) == "true" || value == "1"
 }
 
 func passShow(entry string) (string, error) {
@@ -197,6 +225,11 @@ func withPasswordStoreDir(env []string, passDir string) []string {
 // HasProjectDefined returns true if the credentials have a project already specified
 func (c *Credentials) HasProjectDefined() bool {
 	return c.ProjectID != "" || c.ProjectName != ""
+}
+
+// HasDomainScopeDefined returns true if the credentials request a domain-scoped token
+func (c *Credentials) HasDomainScopeDefined() bool {
+	return c.DomainID != "" || c.DomainName != ""
 }
 
 // IsApplicationCredential returns true if the credentials use application credential authentication

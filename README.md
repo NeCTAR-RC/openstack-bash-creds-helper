@@ -156,13 +156,45 @@ Application credential
     export OS_APPLICATION_CREDENTIAL_SECRET=app_cred_secret
 ```
 
-You can also omit any `OS_PROJECT_NAME` or `OS_PROJECT_ID` to optionally
-request a list of projects that you have roles assigned to choose from.
+Instead of defining a project, you can set `OS_CRED_PROJECT_DISCOVER=true`
+to request a list of projects that you have roles assigned to choose from.
+`OS_CRED_*` variables only control chcreds behaviour and are never
+exported to your environment.
 
 ``` sh
     export OS_AUTH_URL=https://keystone.domain.name/
     export OS_USERNAME=username
     export OS_PASSWORD=password
+    export OS_CRED_PROJECT_DISCOVER=true
+```
+
+For a domain-scoped account, set `OS_DOMAIN_NAME` or `OS_DOMAIN_ID` and omit
+any project variables. The domain scope is passed through for the client to
+use. If `OS_CRED_PROJECT_DISCOVER=true` is also set, the domain appears
+as an extra choice in the project selection instead.
+
+``` sh
+    export OS_AUTH_URL=https://keystone.domain.name/
+    export OS_USERNAME=username
+    export OS_PASSWORD=password
+    export OS_USER_DOMAIN_NAME=mydomain
+    export OS_DOMAIN_NAME=mydomain
+```
+
+To skip token authentication entirely and load the variables from the
+credential file as-is, set `OS_CRED_PASSTHROUGH=true`. This leaves
+`OS_PASSWORD` set in the environment for clients to authenticate with
+directly, which can be useful where token rescoping is not permitted or a
+tool does not support token auth.
+
+``` sh
+    export OS_AUTH_URL=https://keystone.domain.name/
+    export OS_USERNAME=username
+    export OS_PASSWORD=password
+    export OS_USER_DOMAIN_NAME=mydomain
+    export OS_DOMAIN_NAME=mydomain
+    export OS_AUTH_TYPE=password
+    export OS_CRED_PASSTHROUGH=true
 ```
 
 To enable TOTP functionality (if password + TOTP is enabled for identity)

@@ -13,6 +13,10 @@ var shellType string
 
 var projectName string
 
+// domainScopeID marks the synthetic domain-scope entry in the project selector.
+// Real Keystone project IDs never contain angle brackets.
+const domainScopeID = "<domain-scope>"
+
 func debugf(format string, args ...interface{}) {
 	if debugMode {
 		fmt.Fprintf(os.Stderr, "DEBUG: "+format, args...)
@@ -82,6 +86,14 @@ func main() {
 	}
 	if creds.SystemScope != "" {
 		debugf("SystemScope defined: %s\n", creds.SystemScope)
+	}
+
+	// Passthrough mode - output the credential file variables as-is without
+	// fetching a token, so clients authenticate themselves
+	if creds.Passthrough {
+		debugf("Passthrough mode - outputting credential variables directly\n")
+		outputPassthroughVars(credFile, creds)
+		return
 	}
 
 	// Check if TOTP is required and prompt if needed (not applicable for application credentials)
@@ -191,7 +203,29 @@ func main() {
 		return
 	}
 
-	debugf("No project defined, need to list projects for user selection\n")
+	// Project discovery must be explicitly enabled, otherwise fall back to
+	// domain scope if defined
+	if !creds.ProjectDiscover {
+		if creds.HasDomainScopeDefined() {
+			debugf("Domain scope defined - getting unscoped token only\n")
+
+			token, err := GetUnscopedToken(creds)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error getting unscoped token: %v\n", err)
+				os.Exit(1)
+			}
+
+			debugf("Successfully got unscoped token for domain scope\n")
+			outputDomainScopeVars(credFile, token, creds)
+			return
+		}
+		fmt.Fprintf(os.Stderr, "No scope defined in credentials. Set OS_PROJECT_NAME or OS_PROJECT_ID,\n"+
+			"OS_DOMAIN_NAME or OS_DOMAIN_ID for domain scope, or\n"+
+			"OS_CRED_PROJECT_DISCOVER=true for interactive project selection\n")
+		os.Exit(1)
+	}
+
+	debugf("Project discovery enabled, listing projects for user selection\n")
 
 	var projectsList []Project
 
@@ -211,14 +245,38 @@ func main() {
 	debugf("Found %d projects\n", len(projectsList))
 
 	if len(projectsList) == 0 {
+		if creds.HasDomainScopeDefined() {
+			debugf("No projects found but domain scope defined - using domain scope\n")
+			outputDomainScopeVars(credFile, token, creds)
+			return
+		}
 		fmt.Fprintf(os.Stderr, "No projects found\n")
 		os.Exit(1)
+	}
+
+	// Offer domain scope as an extra option if the credentials define one
+	if creds.HasDomainScopeDefined() {
+		domainScopeName := creds.DomainName
+		if domainScopeName == "" {
+			domainScopeName = creds.DomainID
+		}
+		projectsList = append(projectsList, Project{
+			ID:          domainScopeID,
+			Name:        domainScopeName,
+			Description: "domain scope",
+		})
 	}
 
 	selectedProject := SelectProject(projectsList, credFile)
 	if selectedProject == nil {
 		fmt.Fprintf(os.Stderr, "No project selected\n")
 		os.Exit(1)
+	}
+
+	if selectedProject.ID == domainScopeID {
+		debugf("Domain scope selected\n")
+		outputDomainScopeVars(credFile, token, creds)
+		return
 	}
 
 	credFile.DisplayName = credFile.DisplayName + "/" + selectedProject.Name
@@ -238,11 +296,22 @@ func fishEscape(s string) string {
 	return "'" + s + "'"
 }
 
+func bashEscape(s string) string {
+	return "'" + strings.ReplaceAll(s, `'`, `'\''`) + "'"
+}
+
 func outputVar(name string, value string) {
 	if shellType == "fish" {
 		fmt.Printf("set -gx %s %s\n", name, fishEscape(value))
 	} else {
-		fmt.Printf("export %s=%s\n", name, value)
+		fmt.Printf("export %s=%s\n", name, bashEscape(value))
+	}
+}
+
+func outputPassthroughVars(credFile CredentialFile, creds *Credentials) {
+	outputVar("OS_CRED", credFile.DisplayName)
+	for _, v := range creds.RawVars {
+		outputVar(v.Key, v.Value)
 	}
 }
 
@@ -251,6 +320,22 @@ func outputEnvironmentVars(credFile CredentialFile, project *Project, token stri
 	outputVar("OS_IDENTITY_API_VERSION", "3")
 	outputVar("OS_AUTH_URL", creds.AuthURL)
 	outputVar("OS_PROJECT_ID", project.ID)
+	outputVar("OS_TOKEN", token)
+	outputVar("OS_AUTH_TYPE", "token")
+	if creds.Region != "" {
+		outputVar("OS_REGION_NAME", creds.Region)
+	}
+}
+
+func outputDomainScopeVars(credFile CredentialFile, token string, creds *Credentials) {
+	outputVar("OS_CRED", credFile.DisplayName+"/domain")
+	outputVar("OS_IDENTITY_API_VERSION", "3")
+	outputVar("OS_AUTH_URL", creds.AuthURL)
+	if creds.DomainID != "" {
+		outputVar("OS_DOMAIN_ID", creds.DomainID)
+	} else {
+		outputVar("OS_DOMAIN_NAME", creds.DomainName)
+	}
 	outputVar("OS_TOKEN", token)
 	outputVar("OS_AUTH_TYPE", "token")
 	if creds.Region != "" {
