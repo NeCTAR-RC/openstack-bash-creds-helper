@@ -26,10 +26,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: 'stable'
 
@@ -44,7 +44,7 @@ jobs:
           go build -o oscreds-${{ matrix.goos }}-${{ matrix.goarch }}-${{ env.VERSION }} ./...
 
       - name: Upload binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: oscreds-${{ matrix.goos }}-${{ matrix.goarch }}-${{ env.VERSION }}
           path: oscreds-${{ matrix.goos }}-${{ matrix.goarch }}-${{ env.VERSION }}
@@ -55,10 +55,10 @@ jobs:
     steps:
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: ./artifacts
 
