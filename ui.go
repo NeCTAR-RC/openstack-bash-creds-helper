@@ -71,9 +71,11 @@ func fzfSelect[T any](prompt string, items []T, displayFunc func(T) string) (T, 
 	var selected string
 	var found bool
 
-	// Collect output from fzf
+	// Collect output from fzf. The done channel provides the happens-before
+	// edge that makes selected/found safe to read after fzf.Run returns.
+	done := make(chan struct{})
 	go func() {
-		defer close(outputChan)
+		defer close(done)
 		for s := range outputChan {
 			selected = s
 			found = true
@@ -92,8 +94,11 @@ func fzfSelect[T any](prompt string, items []T, displayFunc func(T) string) (T, 
 	options.Input = inputChan
 	options.Output = outputChan
 
-	// Run fzf
+	// Run fzf. It sends the selection before signalling quit, so once Run
+	// returns no more sends can occur and closing the channel is safe.
 	code, _ := fzf.Run(options)
+	close(outputChan)
+	<-done
 	if code != fzf.ExitOk || !found {
 		return zero, false
 	}
