@@ -13,6 +13,14 @@ var shellType string
 
 var projectName string
 
+// authMode selects which auth variables are exported
+const (
+	authModeToken    = "token"
+	authModePassword = "password"
+)
+
+var authMode = authModeToken
+
 // domainScopeID marks the synthetic domain-scope entry in the project selector.
 // Real Keystone project IDs never contain angle brackets.
 const domainScopeID = "<domain-scope>"
@@ -23,15 +31,43 @@ func debugf(format string, args ...interface{}) {
 	}
 }
 
+// usage prints flags with a double-dash prefix, which the flag package
+// accepts but does not show in its default output
+func usage() {
+	out := flag.CommandLine.Output()
+	fmt.Fprintf(out, "Usage: %s [options] [credential]\n\nOptions:\n", os.Args[0])
+	flag.VisitAll(func(f *flag.Flag) {
+		name, usageText := flag.UnquoteUsage(f)
+		if name != "" {
+			name = " " + name
+		}
+		if f.DefValue != "" && f.DefValue != "false" {
+			usageText += fmt.Sprintf(" (default %q)", f.DefValue)
+		}
+		fmt.Fprintf(out, "  --%s%s\n    \t%s\n", f.Name, name, usageText)
+	})
+}
+
 func main() {
 	debug := flag.Bool("debug", false, "Enable debug output")
 	flag.StringVar(&shellType, "shell", "bash", "Shell type for output format (bash or fish)")
 	flag.StringVar(&projectName, "project", "", "Project name to scope to (skips interactive selection)")
+	tokenAuth := flag.Bool("token", false, "Export token auth variables (OS_AUTH_TYPE=token, the default)")
+	passwordAuth := flag.Bool("password", false, "Export password auth variables (OS_AUTH_TYPE=password) instead of a token")
+	flag.Usage = usage
 	flag.Parse()
 
 	if shellType != "bash" && shellType != "fish" {
 		fmt.Fprintf(os.Stderr, "Error: unsupported shell type %q (use bash or fish)\n", shellType)
 		os.Exit(1)
+	}
+
+	if *tokenAuth && *passwordAuth {
+		fmt.Fprintf(os.Stderr, "Error: --token and --password are mutually exclusive\n")
+		os.Exit(1)
+	}
+	if *passwordAuth {
+		authMode = authModePassword
 	}
 
 	debugMode = *debug
@@ -86,6 +122,19 @@ func main() {
 	}
 	if creds.SystemScope != "" {
 		debugf("SystemScope defined: %s\n", creds.SystemScope)
+	}
+
+	if authMode == authModePassword {
+		if creds.IsApplicationCredential() {
+			fmt.Fprintf(os.Stderr, "Error: --password cannot be used with application credentials\n")
+			os.Exit(1)
+		}
+		if creds.Passthrough {
+			debugf("Passthrough mode - --password flag has no effect\n")
+		}
+		if creds.TOTPRequired {
+			fmt.Fprintf(os.Stderr, "Warning: TOTP is required for this credential; the exported password auth may not work without a fresh passcode\n")
+		}
 	}
 
 	// Passthrough mode - output the credential file variables as-is without
@@ -147,7 +196,7 @@ func main() {
 	}
 
 	if projectName != "" {
-		debugf("Project specified via -project flag: %s\n", projectName)
+		debugf("Project specified via --project flag: %s\n", projectName)
 
 		var scopedToken string
 		var selectedProject *Project
@@ -315,13 +364,33 @@ func outputPassthroughVars(credFile CredentialFile, creds *Credentials) {
 	}
 }
 
+// outputAuthVars exports either the fetched token or, in password mode, the
+// username/password identity so clients authenticate themselves
+func outputAuthVars(token string, creds *Credentials) {
+	if authMode == authModePassword {
+		outputVar("OS_AUTH_TYPE", authModePassword)
+		outputVar("OS_USERNAME", creds.Username)
+		outputVar("OS_PASSWORD", creds.Password)
+		if creds.UserDomainId != "" {
+			outputVar("OS_USER_DOMAIN_ID", creds.UserDomainId)
+		} else {
+			outputVar("OS_USER_DOMAIN_NAME", creds.UserDomainName)
+		}
+		return
+	}
+	outputVar("OS_TOKEN", token)
+	outputVar("OS_AUTH_TYPE", authModeToken)
+}
+
 func outputEnvironmentVars(credFile CredentialFile, project *Project, token string, creds *Credentials) {
 	outputVar("OS_CRED", credFile.DisplayName)
 	outputVar("OS_IDENTITY_API_VERSION", "3")
 	outputVar("OS_AUTH_URL", creds.AuthURL)
 	outputVar("OS_PROJECT_ID", project.ID)
-	outputVar("OS_TOKEN", token)
-	outputVar("OS_AUTH_TYPE", "token")
+	if authMode == authModePassword && project.Name != "" {
+		outputVar("OS_PROJECT_NAME", project.Name)
+	}
+	outputAuthVars(token, creds)
 	if creds.Region != "" {
 		outputVar("OS_REGION_NAME", creds.Region)
 	}
@@ -336,8 +405,7 @@ func outputDomainScopeVars(credFile CredentialFile, token string, creds *Credent
 	} else {
 		outputVar("OS_DOMAIN_NAME", creds.DomainName)
 	}
-	outputVar("OS_TOKEN", token)
-	outputVar("OS_AUTH_TYPE", "token")
+	outputAuthVars(token, creds)
 	if creds.Region != "" {
 		outputVar("OS_REGION_NAME", creds.Region)
 	}
@@ -348,8 +416,7 @@ func outputSystemScopeVars(credFile CredentialFile, token string, creds *Credent
 	outputVar("OS_IDENTITY_API_VERSION", "3")
 	outputVar("OS_AUTH_URL", creds.AuthURL)
 	outputVar("OS_SYSTEM_SCOPE", creds.SystemScope)
-	outputVar("OS_TOKEN", token)
-	outputVar("OS_AUTH_TYPE", "token")
+	outputAuthVars(token, creds)
 	if creds.Region != "" {
 		outputVar("OS_REGION_NAME", creds.Region)
 	}

@@ -5,7 +5,7 @@ _chcreds () {
 	local cur="${COMP_WORDS[COMP_CWORD]}"
 
 	if [[ "$cur" == -* ]]; then
-		local opts="-debug -shell -project"
+		local opts="--debug --shell --project --token --password"
 		COMPREPLY=($(compgen -W "$opts" -- "$cur"))
 		return
 	fi

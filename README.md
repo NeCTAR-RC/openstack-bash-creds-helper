@@ -182,6 +182,33 @@ Or set any other value to use it literally as the symbol, for example
 `export CHCREDS_PS1_SYMBOL='OS'`.
 
 
+Choosing the exported auth type
+-------------------------------
+By default, `chcreds` exports a Keystone token (`OS_AUTH_TYPE=token`). Pass
+`--password` to export password auth variables instead (`OS_AUTH_TYPE=password`
+with `OS_USERNAME`, `OS_PASSWORD` and the user domain), so clients authenticate
+themselves on each request. This is useful for long-running sessions where a
+token would expire, or for tools that do not support token auth.
+
+``` sh
+    chcreds --password my-cloud
+```
+
+This works with the interactive project selector too: `chcreds` still
+authenticates once to list your projects and verify access to your selection,
+then exports the password variables scoped to the chosen project
+(`OS_PROJECT_ID` and `OS_PROJECT_NAME`) instead of a token. It also combines
+with `--project`, domain scope and system scope in the same way.
+
+The `--token` flag selects the default token behaviour explicitly, and the two
+flags are mutually exclusive. `--password` cannot be used with application
+credentials, and for credentials with `OS_TOTP_REQUIRED=true` the exported
+password alone will generally not satisfy Keystone, so a warning is printed.
+
+Unlike `OS_CRED_PASSTHROUGH=true`, which skips Keystone entirely and dumps the
+credential file as-is, `--password` still validates the credentials and
+resolves the project scope for you.
+
 Using token auth
 ----------------
 Using a Keystone token auth directly seems to works well with:
